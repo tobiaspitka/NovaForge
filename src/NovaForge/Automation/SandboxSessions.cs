@@ -27,6 +27,25 @@ public static class SandboxSessions
  }
  public static void Launch(string directory)=>Process.Start(new ProcessStartInfo(System.IO.Path.Combine(directory,"NovaForge-Recorder.wsb")){UseShellExecute=true});
  public static bool GuestRunning=>new[]{"WindowsSandbox","WindowsSandboxClient","vmmemWindowsSandbox"}.Any(name=>{var processes=Process.GetProcessesByName(name);try{return processes.Length>0;}finally{foreach(var process in processes)process.Dispose();}});
- public static bool Cleanup(string directory){if(GuestRunning)return false;var path=Path.GetFullPath(directory);var root=Path.GetFullPath(Root).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;if(!path.StartsWith(root,StringComparison.OrdinalIgnoreCase)||Path.GetDirectoryName(path)!=Path.GetFullPath(Root))throw new InvalidDataException("Ungültiger Sitzungsordner.");if(!Directory.Exists(path))return true;if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Sitzungsordner ist eine Verknüpfung.");foreach(var entry in Directory.EnumerateFileSystemEntries(path,"*",SearchOption.AllDirectories))if((File.GetAttributes(entry)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Sitzungsordner enthält Verknüpfungen.");Directory.Delete(path,true);return true;}
+ public static bool Cleanup(string directory)=>Cleanup(directory,out _);
+ public static bool Cleanup(string directory,out string pending)
+ {
+  pending="";if(GuestRunning){pending="Die Testumgebung wird noch verwendet.";return false;}
+  var path=Path.GetFullPath(directory);var root=Path.GetFullPath(Root).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
+  if(!path.StartsWith(root,StringComparison.OrdinalIgnoreCase)||!string.Equals(Path.GetDirectoryName(path),Path.GetFullPath(Root),StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Ungültiger Sitzungsordner.");
+  if(!Directory.Exists(path))return true;
+  try{
+   var files=new List<string>();var folders=new List<string>();
+   void Scan(string folder){if((File.GetAttributes(folder)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Sitzungsordner enthält Verknüpfungen.");folders.Add(folder);foreach(var item in Directory.EnumerateFileSystemEntries(folder)){var attributes=File.GetAttributes(item);if((attributes&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Sitzungsordner enthält Verknüpfungen.");if((attributes&FileAttributes.Directory)!=0)Scan(item);else files.Add(item);}}
+   Scan(path);
+   // Keep transfer metadata until binary/package copies have been removed. A locked executable must not destroy recovery data.
+   var profile=Path.Combine(path,"Output","profile.json");var session=Path.Combine(path,"Input","session.json");
+   var ordered=files.OrderBy(file=>file.Equals(session,StringComparison.OrdinalIgnoreCase)?3:file.Equals(profile,StringComparison.OrdinalIgnoreCase)?2:Path.GetFileName(file).Equals("NovaForge.Beta.exe",StringComparison.OrdinalIgnoreCase)?0:1).ToList();
+   var locks=new List<FileStream>();try{foreach(var file in ordered)locks.Add(new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.None));}finally{foreach(var handle in locks)handle.Dispose();}
+   foreach(var file in ordered){var attributes=File.GetAttributes(file);if((attributes&FileAttributes.ReadOnly)!=0)File.SetAttributes(file,attributes&~FileAttributes.ReadOnly);File.Delete(file);}
+   foreach(var folder in folders.OrderByDescending(x=>x.Length))Directory.Delete(folder,false);
+   return true;
+  }catch(Exception e) when(e is IOException or UnauthorizedAccessException){pending="Temporäre Sitzungsdateien sind noch gesperrt. Bereinigung wird automatisch wiederholt; gespeicherte Aufnahmen bleiben erhalten.";return false;}
+ }
  public static async Task Activate(){var command="Enable-WindowsOptionalFeature -Online -FeatureName 'Containers-DisposableClientVM' -All -NoRestart -ErrorAction Stop";var encoded=Convert.ToBase64String(Encoding.Unicode.GetBytes("try { "+command+"; exit 0 } catch { exit 1 }"));using var process=Process.Start(new ProcessStartInfo(IsoBuilder.PowerShell){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Hidden,Arguments="-NoProfile -NonInteractive -EncodedCommand "+encoded})??throw new IOException("Aktivierung konnte nicht gestartet werden.");await process.WaitForExitAsync();if(process.ExitCode!=0)throw new InvalidOperationException("Windows Sandbox konnte nicht aktiviert werden. Edition, Virtualisierung und Windows-Feature-Verfügbarkeit prüfen.");}
 }
