@@ -58,7 +58,21 @@ public sealed class MainViewModel : Observable
  public bool Editing=>!Busy&&!sessionActive;
  public bool Indeterminate{get=>indeterminate;set=>Set(ref indeterminate,value);}
  public double Fraction{get=>fraction;set=>Set(ref fraction,value);}
- public int Tab{get=>tab;set=>Set(ref tab,value);}
+ public int Tab{get=>tab;set{if(Set(ref tab,value))NotifyGuide();}}
+ public ICommand BackCommand {get;}public ICommand ContinueCommand {get;}
+ public string PageTitle=>new[]{"Dein Windows, mit deinen Programmen","Welche Programme möchtest du mitnehmen?","Einmal zeigen. Danach automatisch installieren.","Wie soll Windows eingerichtet werden?","Alles bereit für dein neues Windows?","Dein Ergebnis"}[Math.Clamp(Tab,0,5)];
+ public string PageHelp=>new[]{"Wähle zuerst deine Windows-Datei oder einen Windows-USB-Stick. Wir führen dich durch den Rest.","Füge die Installationsdateien deiner Programme hinzu. Du kannst auch mehrere Dateien gleichzeitig auswählen.","Du installierst ein Programm in einem getrennten Test-Windows. NovaForge merkt sich deine Schritte und prüft sie danach in einer neuen Sitzung.","Dieser Schritt ist freiwillig. Lass die Einstellungen unverändert, wenn du nicht sicher bist.","Wähle, wo deine neue ISO-Datei gespeichert werden soll. Die Checkliste zeigt dir, was noch fehlt.","Hier findest du deine fertige Datei. Teste sie vor der Verwendung auf einem anderen Computer."}[Math.Clamp(Tab,0,5)];
+ public string PageNumber=>"SCHRITT "+(Tab+1)+" VON 6";
+ public string ContinueLabel=>Tab switch{0=>"Weiter: Programme →",1=>Programs.Any(x=>x.Enabled)?"Weiter: Installation zeigen →":"Ohne Programme weiter →",2=>"Weiter: Windows einrichten →",3=>"Weiter: Zusammenfassung →",4=>"ISO erstellen",_=>"Zur Zusammenfassung"};
+ public bool SourceReady=>SourceKind=="Folder"?Directory.Exists(IsoPath):File.Exists(IsoPath)&&IsoPath.EndsWith(".iso",StringComparison.OrdinalIgnoreCase);
+ public bool ToolReady=>File.Exists(OscdimgPath)&&Path.GetFileName(OscdimgPath).Equals("oscdimg.exe",StringComparison.OrdinalIgnoreCase);
+ public bool OutputReady=>!string.IsNullOrWhiteSpace(OutputPath)&&OutputPath.EndsWith(".iso",StringComparison.OrdinalIgnoreCase)&&!File.Exists(OutputPath)&&!OutputPath.Equals(IsoPath,StringComparison.OrdinalIgnoreCase);
+ public string SourceCheck=>(SourceReady?"✓  ":"○  ")+"Windows-Quelle "+(SourceReady?"ausgewählt":"fehlt noch");
+ public string SoftwareCheck=>(AllProgramsReady?"✓  ":"○  ")+(Programs.Any(x=>x.Enabled)?ReadySummary:"Keine zusätzlichen Programme gewählt");
+ public string ToolCheck=>(ToolReady?"✓  ":"○  ")+"Werkzeug zur ISO-Erstellung "+(ToolReady?"gefunden":"fehlt noch · in Schritt 1 einrichten");
+ public string OutputCheck=>(OutputReady?"✓  ":"○  ")+"Speicherort "+(OutputReady?"gewählt":"fehlt oder ist bereits belegt");
+ public string NavigationHint=>sessionActive?"Beende zuerst die offene Testumgebung mit „Speichern und schließen“.":Tab==0&&!SourceReady?"Wähle eine Windows-Quelle, um fortzufahren.":Tab==2&&!AllProgramsReady?"Nimm jedes ausgewählte Programm auf und teste es einmal.":Tab==4?(!SourceReady?"Die Windows-Quelle fehlt.":!ToolReady?"Richte zuerst das ISO-Werkzeug in Schritt 1 ein.":!AllProgramsReady?"Einige Programme müssen noch getestet werden.":!OutputReady?"Wähle einen neuen Dateinamen für deine ISO.":"Alles ausgewählt. Die vollständige Prüfung erfolgt beim Erstellen."):"Du kannst jederzeit zu einem vorherigen Schritt zurückgehen.";
+ private void NotifyGuide(){foreach(var name in new[]{nameof(PageTitle),nameof(PageHelp),nameof(PageNumber),nameof(ContinueLabel),nameof(SourceReady),nameof(ToolReady),nameof(OutputReady),nameof(SourceCheck),nameof(SoftwareCheck),nameof(ToolCheck),nameof(OutputCheck),nameof(NavigationHint)})Notify(name);CommandManager.InvalidateRequerySuggested();}
  public Installer? Selected{get=>selected;set{if(Set(ref selected,value)){RecordingName=value?.RecordedProfileName.Length>0?value.RecordedProfileName:value?.Name??"Meine Installation";}Notify(nameof(HasSelection));NotifyWizard();CommandManager.InvalidateRequerySuggested();}}
  private bool sandboxChecked,sandboxUsable;private bool sessionActive;private DateTime sessionStarted;private string sessionProgram="",sessionMode="";
  public bool SessionActive=>sessionActive;
@@ -91,6 +105,9 @@ public sealed class MainViewModel : Observable
  {
   ICommand Command(Action action,Func<bool>? can=null)=>new RelayCommand(()=>{action();return Task.CompletedTask;},can);
   bool Edit()=>Editing;bool Selection()=>Editing&&HasSelection;
+  PropertyChanged+=(_,e)=>{if(e.PropertyName is nameof(IsoPath) or nameof(SourceKind) or nameof(OscdimgPath) or nameof(OutputPath) or nameof(AllProgramsReady) or nameof(ReadySummary) or nameof(SessionActive))NotifyGuide();};
+  BackCommand=Command(()=>Tab=Math.Max(0,Tab-1),()=>Editing&&Tab>0);
+  ContinueCommand=new RelayCommand(async()=>{if(Tab==4){await Build();return;}if(Tab==5){Tab=4;return;}if(Tab==1&&!Programs.Any(x=>x.Enabled)){Tab=3;return;}if(Tab==1)Selected=Programs.FirstOrDefault(x=>x.Enabled&&!x.ReadyForIso)??Programs.FirstOrDefault(x=>x.Enabled);Tab++;},()=>Editing&&(Tab switch{0=>SourceReady,2=>AllProgramsReady,4=>SourceReady&&ToolReady&&OutputReady&&AllProgramsReady,_=>true}));
   Programs.CollectionChanged+=(_,e)=>{if(e.OldItems!=null)foreach(Installer app in e.OldItems)app.PropertyChanged-=ProgramChanged;if(e.NewItems!=null)foreach(Installer app in e.NewItems)app.PropertyChanged+=ProgramChanged;NotifyWizard();};
   StudioCommand=Command(()=>Tab=2,Selection);
   NextProgramCommand=Command(()=>{var next=Programs.FirstOrDefault(x=>x.Enabled&&!x.ReadyForIso&&x!=Selected);if(next!=null){Selected=next;Tab=2;}else if(AllProgramsReady){Tab=4;Status="Alle aktiven Programme wurden aufgenommen und frisch getestet.";}else RecorderStatus="Für dieses Programm fehlen noch Aufnahme oder Test.";},()=>Editing&&!sessionActive);
@@ -121,7 +138,7 @@ public sealed class MainViewModel : Observable
   DependenciesCommand=Command(EditDependencies,Selection);
   SaveCommand=new RelayCommand(Save,Edit);OpenCommand=new RelayCommand(Open,Edit);
   ValidateCommand=Command(()=>{var ordered=Validation.Ordered(GetProject());if(SourceKind=="Folder")IsoBuilder.CheckMedia(IsoPath,ordered.Count==0&&!Setup.HasCustomization);else if(!System.IO.File.Exists(IsoPath))throw new InvalidOperationException("Quell-ISO fehlt.");if(!System.IO.File.Exists(OscdimgPath))throw new InvalidOperationException("oscdimg fehlt. ADK Deployment Tools installieren oder Werkzeug zuordnen.");Status="Konfiguration gültig: "+ordered.Count+" Programme. Medieninhalt wird beim Erstellen geprüft.";},Edit);
-  BuildCommand=new RelayCommand(Build,()=>Editing&&!sessionActive&&AllProgramsReady);CancelCommand=Command(()=>{cancellation?.Cancel();Status="Abbruch angefordert. Ressourcen werden kontrolliert freigegeben.";},()=>Busy&&cancellation!=null);
+  BuildCommand=new RelayCommand(Build,()=>Editing&&!sessionActive&&SourceReady&&ToolReady&&OutputReady&&AllProgramsReady);CancelCommand=Command(()=>{cancellation?.Cancel();Status="Abbruch angefordert. Ressourcen werden kontrolliert freigegeben.";},()=>Busy&&cancellation!=null);
   FolderCommand=Command(()=>Launch(System.IO.Path.GetDirectoryName(result!.Path)!),()=>result!=null);LogCommand=Command(()=>Launch(result!.LogPath),()=>result!=null);
  }
  private static void Launch(string path)=>Process.Start(new ProcessStartInfo(path){UseShellExecute=true});
