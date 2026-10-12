@@ -14,6 +14,7 @@ internal static class Program
   var app=new App();app.InitializeComponent();
   var errors=new List<string>();app.DispatcherUnhandledException+=(_,e)=>{errors.Add(e.Exception.ToString());e.Handled=true;};
   var window=new MainWindow();window.Show();
+  var recorderSetup=NovaForge.Automation.MouseRecorder.Create(_=>false,_=>{});
   var a=new Installer{Name="Beispiel MSI",Path="C:\\Installationsdateien\\Beispiel.msi",Profile="MSI · Windows Installer",Verified=true};
   var b=new Installer{Name="Beispiel EXE",Path="C:\\Installationsdateien\\Programm.exe",Profile="Inno Setup · Vorschlag",Arguments="/custom-preserve",Verified=true};
   window.Model.Programs.Add(a);window.Model.Programs.Add(b);window.Model.Selected=b;
@@ -40,6 +41,7 @@ internal static class Program
    page++;if(page==6){timer.Stop();window.Close();frame.Continue=false;}else{window.Model.Tab=page;if(page==1){window.Model.Selected=a;window.Model.Selected=b;}}
   };
   timer.Start();Dispatcher.PushFrame(frame);
+  if(!recorderSetup.IsCompletedSuccessfully)errors.Add("Recorder setup on MTA worker did not complete while real WPF dispatcher remained responsive.");else recorderSetup.Result.Dispose();
   foreach(var e in errors)Console.Error.WriteLine(e);
   var status=errors.Count==0?"PASS: six real WPF pages loaded and laid out; no dispatcher exceptions; parameter selection preserved.":"FAIL: WPF layout/binding exceptions.";
   status+="\n"+(bitmapAvailable==true?"PASS: bitmap capture verified against red control drawing and content color count.":"SKIP: bitmap capture unavailable in current desktop session; even independent red drawing produced empty pixels. No blank screenshots delivered.");

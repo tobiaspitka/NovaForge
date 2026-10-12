@@ -1,4 +1,4 @@
-# NovaForge 1.2.0-beta.5 · Aufnahme- und Speicherfix
+# NovaForge 1.2.0-beta.6 · Aufnahme- und Speicherfix
 
 - Aufnahme erfasst UIA-Ereignisse und beobachtet Klicks über vorab gelesene Selektoren. Keine UIA-/Dateiprüfung im zeitkritischen Eingabe-Hook. Aufnahmefehler werden angezeigt und protokolliert.
 - Installer wird im Gast automatisch gestartet; zusätzliche Installations-/Treiberfenster werden standardmäßig mit erfasst. Über den Schalter kann dies abgeschaltet werden. UAC auf dem geschützten Desktop bleibt manuell.

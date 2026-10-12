@@ -1,4 +1,4 @@
-# NovaForge 1.2.0-beta.5 · Aufnahme- und Speicherfix
+# NovaForge 1.2.0-beta.6 · Aufnahme- und Speicherfix
 
 - Aufnahme erfasst UIA-Ereignisse und beobachtet Klicks über vorab gelesene Selektoren. Keine UIA-/Dateiprüfung im zeitkritischen Eingabe-Hook. Aufnahmefehler werden angezeigt und protokolliert.
 - Für zusätzliche Windows-Treiberbestätigungen (z. B. beim VNC-Bildschirmtreiber) wird der Prozesspfad mit begrenzten Abfragerechten statt über Modulzugriff ermittelt. Der Dialog wird als eigenes Fenster erfasst; ein echter VNC-/Treiberlauf wurde hier nicht durchgeführt.
