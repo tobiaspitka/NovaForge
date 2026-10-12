@@ -1,3 +1,17 @@
+# NovaForge 1.3.0-beta.4 · Automatische Wiedergabe und verständliche Schritte
+
+Die gesamte UI-Automation der Wiedergabe läuft außerhalb des WPF-Fensterablaufs auf MTA-Hintergrundthreads. Schaltflächen werden über einen eigenen Helfer ausgelöst, der das Ziel selbst erneut auflöst; ein laufender Invoke-Aufruf sperrt nicht die Suche nach dem nächsten Dialog. Vor erfolgreicher Freigabe müssen die Auslösungen abgeschlossen, der Installer erfolgreich beendet und die neue Prüfdatei vorhanden sein. Es werden keine gespeicherten Bildschirmkoordinaten blind geklickt.
+
+Die Fenstersuche berücksichtigt auch passende Unterdialoge innerhalb eines zugeordneten Prozessfensters und weist mehrdeutige Ziele weiterhin zurück. Neue Aufnahmeschritte speichern die Prozessdatei-Prüfsumme auch für normale Installerprozesse, damit spätere getrennte Launcher-/Treiberfenster gezielt erkannt werden können.
+
+Die Oberfläche zeigt „Schaltfläche betätigen“, „Eintrag auswählen“, „Häkchen setzen“ und „Text eingeben“ statt Invoke/Select. Die gespeicherten Aktionen bleiben kompatibel. Im Test wird der aktuelle Schritt markiert. Wartehinweise enthalten Schrittnummer, erwartetes Fenster und verbleibende Wartezeit. Das Wiedergabeprotokoll bleibt nach Bereinigung unter der Aufnahmebibliothek/Diagnostics erhalten; vertrauliche Werte werden nicht ausgegeben.
+
+Neue echte Prozessprüfung: Radio-Auswahl und zusätzlicher modaler Bestätigungsdialog werden zuerst mit echten UIA-Selektoren erfasst und anschließend in einer neuen Fixture-Instanz automatisch wiedergegeben. Der Aufruf kommt dabei wie beim Recorder aus einem STA-Dispatcher; alle Automationsmeldungen müssen vom MTA-Worker kommen und der Dispatcher muss weiter reagieren.
+
+Microsoft dokumentiert mögliche Blockaden durch Invoke und die Verwendung eines separaten Helfers: https://learn.microsoft.com/en-us/dotnet/api/system.windows.automation.invokepattern.invoke
+
+Prüfgrenze: Diese Tests verwenden ein eigenes harmloses Programm. Vollständige Sandbox-/VNC-Treiber-/ISO-Installation hier weiterhin nicht ausgeführt. Nicht zugängliche UAC-Dialoge bleiben manuell; einzelne Installer können zusätzliche Anpassungen benötigen.
+
 # NovaForge 1.3.0-beta.3 · Sitzungsbereinigung und Aufnahmen löschen
 
 Eine gesperrte NovaForge.Beta.exe oder schreibgeschützte temporäre Kopie verursacht keinen falschen Übernahmefehler mehr. Die Bereinigung wartet bei Zugriffs-/Dateisperren und wird automatisch erneut versucht. Übernahmedaten bleiben erhalten, bis die großen Kopien gelöscht sind. Bestätigte Exporte werden auch nach einem Neustart nicht erneut importiert. Die Hostbestätigung wird vor der internen Kennzeichnung geschrieben, damit fehlgeschlagene Bestätigungen erneut versucht werden.

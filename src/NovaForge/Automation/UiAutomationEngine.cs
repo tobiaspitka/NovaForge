@@ -34,12 +34,12 @@ public static class UiAutomationEngine
  public static bool MatchesExternal(UiStep step,int pid){if(step.ProcessImageSha256.Length==0)return false;try{var path=ProcessImagePath(pid);return Path.GetFileNameWithoutExtension(path).Equals(step.ProcessName,StringComparison.OrdinalIgnoreCase)&&Validation.Hash(path).GetAwaiter().GetResult()==step.ProcessImageSha256;}catch{return false;}}
  public static AutomationElement? Find(UiStep step,Func<int,bool> allowed)
  {
-  var windows=AutomationElement.RootElement.FindAll(TreeScope.Children,new PropertyCondition(AutomationElement.NameProperty,step.WindowTitle));var matches=new List<AutomationElement>();
-  foreach(AutomationElement window in windows){if(!allowed(window.Current.ProcessId))continue;
+  var windows=new List<AutomationElement>();foreach(AutomationElement top in AutomationElement.RootElement.FindAll(TreeScope.Children,Condition.TrueCondition)){if(!allowed(top.Current.ProcessId))continue;if(top.Current.Name==step.WindowTitle)windows.Add(top);foreach(AutomationElement owned in top.FindAll(TreeScope.Descendants,new AndCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Window),new PropertyCondition(AutomationElement.NameProperty,step.WindowTitle))))if(allowed(owned.Current.ProcessId)&&!windows.Contains(owned))windows.Add(owned);}var matches=new List<AutomationElement>();
+  foreach(AutomationElement window in windows){
    var conditions=new List<Condition>{new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.LookupById(step.ControlTypeId))};
    if(step.AutomationId.Length>0)conditions.Add(new PropertyCondition(AutomationElement.AutomationIdProperty,step.AutomationId));else conditions.Add(new PropertyCondition(AutomationElement.NameProperty,step.Name));
    if(step.ClassName.Length>0)conditions.Add(new PropertyCondition(AutomationElement.ClassNameProperty,step.ClassName));
-   foreach(AutomationElement element in window.FindAll(TreeScope.Descendants,new AndCondition(conditions.ToArray())))if(element.Current.IsEnabled&&!element.Current.IsOffscreen)matches.Add(element);
+   foreach(AutomationElement element in window.FindAll(TreeScope.Descendants,new AndCondition(conditions.ToArray())))if(element.Current.IsEnabled&&!element.Current.IsOffscreen&&!matches.Contains(element))matches.Add(element);
   }
   if(matches.Count>1)throw new InvalidDataException("Steuerelement ist nicht eindeutig: "+step.Name);return matches.SingleOrDefault();
  }
@@ -69,16 +69,23 @@ public static class UiAutomationEngine
  {
   var msi=System.IO.Path.GetExtension(path).Equals(".msi",StringComparison.OrdinalIgnoreCase);var info=new ProcessStartInfo(msi?System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"msiexec.exe"):path){UseShellExecute=false,Arguments=msi?"/i "+IsoBuilder.Quote(path)+" "+arguments:arguments,WorkingDirectory=System.IO.Path.GetDirectoryName(path)!};return Process.Start(info)??throw new IOException("Installer konnte nicht gestartet werden.");
  }
- public static async Task<int> Replay(RecordedProfile profile,string installer,Action<string> log,CancellationToken ct)
+ public static Task<int> Replay(RecordedProfile profile,string installer,Action<string> log,CancellationToken ct)=>Task.Run(()=>ReplayCore(profile,installer,log,ct),ct);
+ private static Task InvokeOnWorker(UiStep step,Func<int,bool> allowed,CancellationToken ct)
+ {
+  var completed=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);var worker=new Thread(()=>{try{ct.ThrowIfCancellationRequested();var target=Find(step,allowed)??throw new InvalidDataException("Schaltfläche ist vor dem Auslösen verschwunden: "+step.Name);Apply(target,step);completed.TrySetResult();}catch(Exception e){completed.TrySetException(e);}}){IsBackground=true,Name="NovaForge UIA invocation"};worker.SetApartmentState(ApartmentState.MTA);worker.Start();return completed.Task;
+ }
+ private static async Task<int> ReplayCore(RecordedProfile profile,string installer,Action<string> log,CancellationToken ct)
  {
   profile.Validate();if(await Validation.Hash(installer,ct)!=profile.InstallerSha256)throw new InvalidDataException("Installer stimmt nicht mit der Aufzeichnung überein.");
   string? ownedPackage=null;if(profile.PackageSha256.Length>0){if(await FolderMedia.Digest(Path.GetDirectoryName(installer)!,ct)!=profile.PackageSha256)throw new InvalidDataException("Installer-Begleitdateien stimmen nicht mit der Aufnahme überein.");ownedPackage=Path.Combine(Path.GetTempPath(),"NovaForge-Replay-"+Guid.NewGuid().ToString("N"));await FolderMedia.Copy(Path.GetDirectoryName(installer)!,ownedPackage,new Progress<BuildProgress>(),ct);installer=Path.Combine(ownedPackage,Path.GetFileName(installer));}InstallerDirectory=Path.GetDirectoryName(installer)!;
   try {
   var verification=Expand(profile.VerificationFile);if(File.Exists(verification))throw new InvalidDataException("Prüfdatei existiert bereits. Für den Profiltest eine frische Umgebung verwenden.");
   using var process=StartInstaller(installer,profile.InstallerArguments);var allowed=ProcessFilter(process.Id,System.IO.Path.GetExtension(installer).Equals(".msi",StringComparison.OrdinalIgnoreCase));
-  try{foreach(var step in profile.Steps){log("Schritt: "+step.Action+" · "+(step.Action=="SetSecretValue"?"Vertrauliches Feld":step.Name));var until=DateTime.UtcNow.AddSeconds(step.TimeoutSeconds);AutomationElement? element=null;while(DateTime.UtcNow<until){ct.ThrowIfCancellationRequested();try{element=Find(step,pid=>allowed(pid)||MatchesExternal(step,pid));}catch(ElementNotAvailableException){}if(element!=null)break;await Task.Delay(200,ct);}if(element==null)throw new TimeoutException("Fenster/Steuerelement nicht gefunden: "+step.WindowTitle+" / "+step.Name);Apply(element,step);await Task.Delay(300,ct);}
+  var pendingInvokes=new List<Task>();
+  try{for(var index=0;index<profile.Steps.Count;index++){var step=profile.Steps[index];var description="Schritt "+(index+1)+" von "+profile.Steps.Count+": "+step.ActionLabel+" · "+(step.Action=="SetSecretValue"?"Vertrauliches Feld":step.Name);log(description);var until=DateTime.UtcNow.AddSeconds(step.TimeoutSeconds);var nextNotice=DateTime.UtcNow.AddSeconds(3);AutomationElement? element=null;while(DateTime.UtcNow<until){ct.ThrowIfCancellationRequested();foreach(var pending in pendingInvokes.Where(x=>x.IsCompleted).ToList()){await pending;pendingInvokes.Remove(pending);}try{element=Find(step,pid=>allowed(pid)||MatchesExternal(step,pid));}catch(ElementNotAvailableException){}if(element!=null)break;if(DateTime.UtcNow>=nextNotice){log(description+" · Warte auf „"+step.WindowTitle+"“ (noch "+Math.Max(0,(int)(until-DateTime.UtcNow).TotalSeconds)+" s).");nextNotice=DateTime.UtcNow.AddSeconds(5);}await Task.Delay(200,ct);}if(element==null)throw new TimeoutException(description+" · Fenster/Steuerelement nicht gefunden: "+step.WindowTitle+" / "+step.Name+". Prüfe, ob ein vorgeschalteter Dialog oder eine manuelle Administratorbestätigung offen ist.");
+   if(step.Action=="Invoke"){var invocation=InvokeOnWorker(step,pid=>allowed(pid)||MatchesExternal(step,pid),ct);if(await Task.WhenAny(invocation,Task.Delay(750,ct))==invocation)await invocation;else{pendingInvokes.Add(invocation);log(description+" · Auslösung läuft; nächster Dialog wird erwartet.");}}else Apply(element,step);await Task.Delay(300,ct);}
    await process.WaitForExitAsync(ct);var code=process.ExitCode;if(code is not (0 or 3010))throw new IOException("Installer-Exitcode: "+code);
-   if(!File.Exists(verification))throw new IOException("Installation nicht bestätigt: neue Prüfdatei fehlt.");log("Installation anhand neuer Prüfdatei bestätigt.");return code;
+   await Task.WhenAll(pendingInvokes).WaitAsync(ct);if(!File.Exists(verification))throw new IOException("Installation nicht bestätigt: neue Prüfdatei fehlt.");log("Installation anhand neuer Prüfdatei bestätigt.");return code;
   }catch{try{if(!process.HasExited)process.Kill(true);}catch{}throw;}
   }finally{if(ownedPackage!=null&&FolderMedia.Within(ownedPackage,Path.GetTempPath())){try{Directory.Delete(ownedPackage,true);}catch{}}}
  }
