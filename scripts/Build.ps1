@@ -8,6 +8,8 @@ if($LASTEXITCODE -ne 0){throw 'Build fehlgeschlagen.'}
 if($LASTEXITCODE -ne 0){throw 'Tests fehlgeschlagen.'}
 & (Join-Path $env:windir 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tests\Runner.Integration.ps1')
 if($LASTEXITCODE -ne 0){throw 'PowerShell-Integrationstests fehlgeschlagen.'}
+& (Join-Path $env:windir 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tests\Versioning.Integration.ps1')
+if($LASTEXITCODE -ne 0){throw 'Versionierungstests fehlgeschlagen.'}
 & $Dotnet run --project (Join-Path $root 'tests\NovaForge.UiTests\NovaForge.UiTests.csproj') -c Release -- (Join-Path $root 'artifacts\ui')
 if($LASTEXITCODE -ne 0){throw 'WPF-Tests fehlgeschlagen.'}
 & (Join-Path $PSScriptRoot 'Write-Validation.ps1')

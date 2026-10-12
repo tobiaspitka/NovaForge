@@ -4,7 +4,7 @@
   $path=Join-Path $Root $folder
   if(Test-Path -LiteralPath $path){$files+=Get-ChildItem -LiteralPath $path -Recurse -File | Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' -and $_.Name -ne 'runner-results.txt' } | Select-Object -ExpandProperty FullName}
  }
- foreach($name in @('README.md','ARCHITEKTUR.md','TESTPROTOKOLL.md','CHANGELOG.md','LICENSE','global.json','.gitignore','.gitattributes')){if(Test-Path -LiteralPath (Join-Path $Root $name)){$files+=Join-Path $Root $name}}
+ foreach($name in @('README.md','ARCHITEKTUR.md','TESTPROTOKOLL.md','CHANGELOG.md','LICENSE','global.json','Directory.Build.props','.gitignore','.gitattributes')){if(Test-Path -LiteralPath (Join-Path $Root $name)){$files+=Join-Path $Root $name}}
  return @($files | Sort-Object -Unique)
 }
 function Get-NovaForgeSourceDigest([string]$Root) {

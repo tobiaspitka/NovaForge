@@ -1,4 +1,4 @@
-# Testprotokoll · NovaForge 1.1.0
+# Testprotokoll · NovaForge 1.1.1
 
 Stand: **12. Oktober 2026**, Windows 11 Pro x64, Build **10.0.26300**. Verwendet: .NET SDK **10.0.401**, .NET/WPF-Runtime **10.0.12**, Windows PowerShell **5.1**. Keine ursprüngliche Projektbasis vorhanden; Anwendung neu erstellt.
 
@@ -42,3 +42,5 @@ Erst nach diesen Prüfungen kann der vollständige Windows-Setup-Ablauf als prak
 ## Version 1.1.0 – zusätzliche Prüfungen
 
 Setup-Defaults, unabhängige WinPE-Hardwareflags, BypassNRO-Reihenfolge, XML-Escaping und Kennwortkodierung, Kennwort-/Kontonamen- und Computernamevalidierung, regionale Einstellungen, Langpfade, Setup-only-Projekte, Kennwortausschluss aus JSON und Format-1-Migration sind automatisiert geprüft. Das fünfte Setup-Menü wurde unter Windows layoutet und exportiert. Die tatsächliche Wirkung auf OOBE, Konten und Hardwareprüfungen ist ohne neue Windows-Installation noch nicht abgenommen. Lokal gesicherte EXE-Versionen dürfen nicht mit einer solchen VM-Abnahme gleichgesetzt werden.
+
+Versionierungsregression: unveränderte Quelle behält die Version; geänderte Quelle erhält automatisch eine Patchversion; bisherige Sicherung bleibt bytegleich; ungetestete Sicherung wird abgelehnt. Die tatsächlich startbare Version 1.1.0 bleibt unverändert lokal gespeichert. Nach der folgenden Patchänderung wird 1.1.1 separat gesichert.

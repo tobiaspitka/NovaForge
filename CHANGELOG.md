@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.1.1
+
+- Kennwortfelder werden beim Wechsel des Projekts geleert, passend zum nicht gespeicherten Kennwort.
+- Deterministische Versionsmetadaten verhindern, dass ein reiner Git-Commit eine andere EXE mit gleicher Versionsnummer erzeugt.
+- Versionsverwaltung prüft unveränderte und veränderte Quellstände sowie das Zurückweisen ungetesteter Sicherungen in isolierten Tests.
+
 ## 1.1.0
 
 - Neues Menü „Setup-Optionen“ mit einzeln schaltbaren Anpassungen.
