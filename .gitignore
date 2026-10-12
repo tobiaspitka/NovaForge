@@ -1,0 +1,14 @@
+.tools/
+**/bin/
+**/obj/
+dist/
+release/
+artifacts/
+*.iso
+*.iso.log
+*.sha256
+.local-history/
+
+*.user
+*.suo
+.local-secrets/

@@ -1,0 +1,16 @@
+﻿PASS Real process success
+PASS Real exitcode 3010
+PASS Reboot pauses queue
+PASS Same-boot resume never repeats completed installers
+PASS Queue resumes after boot marker changes
+PASS Disallowed exitcode stored
+PASS Failed dependency blocks installer
+PASS Timeout terminates real process
+PASS Payload hash mismatch prevents execution
+PASS Running state becomes interrupted without re-execution
+PASS User queue reads system dependency and writes per-user state
+PASS Completion marker written
+PASS User waits for running system dependency and resumes during same logon
+PASS MSI substitute exits successfully
+PASS Actual MSI argument construction includes quiet, restart suppression, log and context
+15 integration tests passed. No application was installed.

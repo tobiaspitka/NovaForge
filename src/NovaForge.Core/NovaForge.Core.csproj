@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup><EmbeddedResource Include="../../scripts/*.ps1" Exclude="../../scripts/Build.ps1;../../scripts/Publish.ps1" Link="Scripts/%(Filename)%(Extension)" /></ItemGroup>
+</Project>

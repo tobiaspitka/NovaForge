@@ -1,0 +1,26 @@
+{
+  "IsoSha256": "",
+  "OutputPath": "Windows-NovaForge.iso",
+  "Programs": [
+    {
+      "TimeoutSeconds": 60,
+      "Context": "System",
+      "Path": "BeispielInstaller.exe",
+      "Name": "NovaForge · quelloffenes Beispiel",
+      "Enabled": true,
+      "Verified": true,
+      "Sha256": "8E005114C6DC203AFA62F07493EB8CD8279F055C11A3D038F5355A6044E1A084",
+      "Dependencies": "",
+      "WebInstaller": false,
+      "Arguments": "/silent",
+      "RebootPolicy": "PauseUntilReboot",
+      "AllowedExitCodes": "0,3010",
+      "Profile": "Unbekannt / ungeprüft",
+      "Id": "fc9761b05a254449bbd9e7812bb36fa8"
+    }
+  ],
+  "WorkDirectory": "Arbeitsdateien",
+  "Version": 1,
+  "IsoPath": "Windows-original.iso",
+  "OscdimgPath": ""
+}

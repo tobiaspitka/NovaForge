@@ -1,0 +1,16 @@
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using NovaForge.Core;
+namespace NovaForge;
+public partial class MainWindow : Window
+{
+ public MainViewModel Model{get;}=new();
+ public MainWindow(){InitializeComponent();DataContext=Model;Closing+=OnClosing;Model.EditorValid=()=>!HasValidationError(this);}
+ private static bool HasValidationError(DependencyObject node){if(System.Windows.Controls.Validation.GetHasError(node))return true;for(int i=0;i<VisualTreeHelper.GetChildrenCount(node);i++)if(HasValidationError(VisualTreeHelper.GetChild(node,i)))return true;return false;}
+ private void OnClosing(object? sender,CancelEventArgs e){if(Model.Busy){e.Cancel=true;Model.Status="Bitte den laufenden Vorgang erst abbrechen oder abschließen lassen.";}}
+ private void FilesDragOver(object sender,DragEventArgs e){e.Effects=!Model.Busy&&e.Data.GetDataPresent(DataFormats.FileDrop)?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;}
+ private void FilesDropped(object sender,DragEventArgs e){if(e.Data.GetData(DataFormats.FileDrop) is string[] paths)Model.AddFiles(paths);}
+ private void ProfileChanged(object sender,SelectionChangedEventArgs e){if(sender is ComboBox{DataContext:Installer a} box && (box.IsKeyboardFocusWithin||box.IsDropDownOpen) && e.RemovedItems.Count>0 && Model.Editing)Model.ApplyProfile(a);}
+}
