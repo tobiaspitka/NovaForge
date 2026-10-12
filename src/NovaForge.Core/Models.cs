@@ -43,6 +43,7 @@ public sealed class Project
     [System.Text.Json.Serialization.JsonIgnore] public bool ReplayHostPortable {get;set;}
     [System.Text.Json.Serialization.JsonIgnore] public string ReplayHostPath {get;set;}="";
     public string IsoPath { get; set; }="";
+    public string SourceKind {get;set;}="Iso";
     public string IsoSha256 { get; set; }="";
     public string OutputPath { get; set; }="";
     public string WorkDirectory { get; set; }=System.IO.Path.GetTempPath();
@@ -70,7 +71,8 @@ public static class Validation
     {
         var active=p.Programs.Where(x=>x.Enabled).ToList();
         p.Setup.Validate();
-        if(active.Count==0&&!p.Setup.HasCustomization) throw new InvalidDataException("Mindestens ein Programm oder eine Setup-Option aktivieren.");
+        if(p.SourceKind is not ("Iso" or "Folder"))throw new InvalidDataException("Unbekannter Quelltyp.");
+        if(active.Count==0&&!p.Setup.HasCustomization&&p.SourceKind!="Folder") throw new InvalidDataException("Mindestens ein Programm oder eine Setup-Option aktivieren.");
         if(p.Programs.Select(x=>x.Id).Distinct().Count()!=p.Programs.Count || p.Programs.Any(x=>!Guid.TryParseExact(x.Id,"N",out _))) throw new InvalidDataException("Ungültige oder doppelte Programm-IDs.");
         if(p.Programs.Any(x=>string.IsNullOrWhiteSpace(x.Name)||string.IsNullOrWhiteSpace(x.Path)))throw new InvalidDataException("Name und Dateipfad sind Pflichtangaben.");
         if(p.Programs.Select(x=>System.IO.Path.GetFullPath(x.Path)).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=p.Programs.Count) throw new InvalidDataException("Doppelte Installationsdateien.");

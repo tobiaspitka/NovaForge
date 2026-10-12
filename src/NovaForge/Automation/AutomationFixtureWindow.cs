@@ -11,6 +11,6 @@ public sealed class AutomationFixtureWindow : Window
   var check=new CheckBox{Content="Testkomponente"};AutomationProperties.SetAutomationId(check,"component");panel.Children.Add(check);
   var field=new TextBox{Text="initial"};AutomationProperties.SetAutomationId(field,"target");panel.Children.Add(field);
   var password=new PasswordBox();AutomationProperties.SetAutomationId(password,"secret");panel.Children.Add(password);
-  var button=new Button{Content="Test abschließen"};AutomationProperties.SetAutomationId(button,"finish");panel.Children.Add(button);button.Click+=(_,_)=>{Directory.CreateDirectory(System.IO.Path.GetDirectoryName(marker)!);File.WriteAllText(marker,(check.IsChecked==true?"enabled":"disabled")+"|"+field.Text);Close();};
+  var button=new Button{Content="Test abschließen"};AutomationProperties.SetAutomationId(button,"finish");panel.Children.Add(button);button.Click+=(_,_)=>{Directory.CreateDirectory(System.IO.Path.GetDirectoryName(marker)!);File.WriteAllText(marker,(check.IsChecked==true?"enabled":"disabled")+"|"+field.Text+(password.Password.Length>0?"|"+password.Password:""));Close();};
  }
 }

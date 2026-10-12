@@ -15,7 +15,7 @@ public partial class App : Application
    if(e.Args.Contains("--recorder")){new RecorderWindow(Arg("--session")).Show();return;}
    if(e.Args.Contains("--replay")){
     ShutdownMode=ShutdownMode.OnExplicitShutdown;var profileFile=Arg("--profile");var installer=Arg("--installer");var logFile=Arg("--log");var profile=await RecordedProfile.Load(profileFile);profile.Validate(true);
-    if(profile.RequiresElevation&&!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator)){
+    if(!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator)){
      var arguments=string.Join(" ",e.Args.Select(IsoBuilder.Quote));using var child=Process.Start(new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=true,Verb="runas",Arguments=arguments})??throw new IOException("Erhöhung fehlgeschlagen.");await child.WaitForExitAsync();Shutdown(child.ExitCode);return;
     }
     using var timeout=new CancellationTokenSource(TimeSpan.FromMinutes(30));Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(logFile))!);

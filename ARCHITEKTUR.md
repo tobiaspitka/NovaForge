@@ -18,3 +18,5 @@ SYSTEM-Status befindet sich im nur administrativ beschreibbaren Payload-Ordner, 
 
 ## Beta-Recorder
 SandboxSessions trennt schreibgeschützte Eingaben und beschreibbare Ausgaben. RecorderWindow erfasst UIA-Steuerelemente. RecordedProfile bindet den Ablauf an Installer-Hash und Prüfdatei. Erfolgreiche Testwiedergabe bestätigt den unveränderten Plan. IsoBuilder übernimmt den portablen Replay-Host und validierte Profile; Runner prüft Profil-Hashes. Beta-Builds liegen getrennt unter dist/beta.
+
+RecordingLibrary übernimmt exportierte Profile atomar in benutzerlokale Bibliotheksdateien. Der Host überwacht Sitzungen und ordnet nach Installer-Hash zu. Erst nach Persistierung und geschlossenem Sandbox-Client werden Eingabekopien entfernt. Geheimwerte werden ausdrücklich aufgenommen und sind in Profilen/Medien verfügbar; UI und normale Logs maskieren sie. Zusatzfenster sind an Prozessname und Binärhash gebunden. FolderMedia verhindert überlappende Kopien/ReparsePoints und verifiziert Quelle und Kopie mit Dateimanifest-Hashes. Reines USB→ISO erhält bestehende Anpassungen.

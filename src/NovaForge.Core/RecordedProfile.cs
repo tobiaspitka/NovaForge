@@ -11,7 +11,9 @@ public sealed class UiStep : Observable
  public int ControlTypeId {get;set;}
  public string Value {get;set;}="";
  public int TimeoutSeconds {get;set;}=45;
- public override string ToString()=>$"{Action} · {Name} · {WindowTitle}";
+ public string ProcessName {get;set;}="";
+ public string ProcessImageSha256 {get;set;}="";
+ public override string ToString()=>$"{Action} · {(Action=="SetSecretValue"?"Vertrauliches Feld":Name)} · {WindowTitle}";
 }
 public sealed class RecordedProfile
 {
@@ -33,7 +35,7 @@ public sealed class RecordedProfile
  {
   if(Version!=1||InstallerSha256.Length!=64||!InstallerSha256.All(Uri.IsHexDigit))throw new InvalidDataException("Ungültige Recorder-Version oder Installer-Prüfsumme.");
   if(Steps.Count is <1 or >300)throw new InvalidDataException("Ein Recorder-Profil benötigt 1–300 Schritte.");
-  foreach(var s in Steps){if(s.Action is not ("Invoke" or "Toggle" or "Select" or "SetValue"))throw new InvalidDataException("Unbekannte Recorder-Aktion.");if(s.Action=="Toggle"&&s.Value is not ("On" or "Off"))throw new InvalidDataException("Ungültiger Checkbox-Zustand.");if(string.IsNullOrWhiteSpace(s.WindowTitle)||(string.IsNullOrWhiteSpace(s.AutomationId)&&string.IsNullOrWhiteSpace(s.Name))||s.ControlTypeId is <50000 or >50050||s.TimeoutSeconds is <1 or >600)throw new InvalidDataException("Unvollständiger Steuerelement-Selektor.");if(s.Value.Length>4096||s.Value.Contains('\0'))throw new InvalidDataException("Recorder-Wert ungültig.");}
+  foreach(var s in Steps){if(s.Action is not ("Invoke" or "Toggle" or "Select" or "SetValue" or "SetSecretValue"))throw new InvalidDataException("Unbekannte Recorder-Aktion.");if(s.Action=="Toggle"&&s.Value is not ("On" or "Off"))throw new InvalidDataException("Ungültiger Checkbox-Zustand.");if(string.IsNullOrWhiteSpace(s.WindowTitle)||(string.IsNullOrWhiteSpace(s.AutomationId)&&string.IsNullOrWhiteSpace(s.Name))||s.ControlTypeId is <50000 or >50050||s.TimeoutSeconds is <1 or >600)throw new InvalidDataException("Unvollständiger Steuerelement-Selektor.");if(s.Value.Length>4096||s.Value.Contains('\0'))throw new InvalidDataException("Recorder-Wert ungültig.");if(s.ProcessImageSha256.Length>0&&(s.ProcessImageSha256.Length!=64||!s.ProcessImageSha256.All(Uri.IsHexDigit)||string.IsNullOrWhiteSpace(s.ProcessName)))throw new InvalidDataException("Zusatzfenster-Prozesskennung ungültig.");}
   if(string.IsNullOrWhiteSpace(VerificationFile)||!new[]{"{ProgramFiles}","{ProgramFilesX86}","{LocalAppData}","{UserProfile}","{ProgramData}"}.Any(VerificationFile.StartsWith)||VerificationFile.Contains(".."))throw new InvalidDataException("Eine neue installierte Prüfdatei unter einem unterstützten Zielordner auswählen.");
   if(requireTest&&(!Tested||TestedPlanSha256!=PlanHash()))throw new InvalidDataException("Dieses Recorder-Profil muss unverändert in einer frischen Sandbox getestet werden.");
  }

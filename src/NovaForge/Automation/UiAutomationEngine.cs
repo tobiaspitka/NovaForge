@@ -27,6 +27,9 @@ public static class UiAutomationEngine
   }
   return null;
  }
+ public static UiStep CaptureSecret(AutomationElement element,string value){var window=TopWindow(element)??throw new InvalidDataException("Kein Fenster gefunden.");if(element.Current.ControlType!=ControlType.Edit)throw new InvalidDataException("Bitte ein Text- oder Kennwortfeld fokussieren.");return new(){Action="SetSecretValue",Value=value,WindowTitle=window.Current.Name,Name=element.Current.Name,AutomationId=element.Current.AutomationId,ClassName=element.Current.ClassName,ControlTypeId=element.Current.ControlType.Id};}
+ public static void BindExternal(UiStep step,int pid){using var process=Process.GetProcessById(pid);var path=process.MainModule?.FileName??throw new IOException("Zusatzprozess kann nicht geprüft werden.");step.ProcessName=process.ProcessName;step.ProcessImageSha256=Validation.Hash(path).GetAwaiter().GetResult();}
+ public static bool MatchesExternal(UiStep step,int pid){if(step.ProcessImageSha256.Length==0)return false;try{using var p=Process.GetProcessById(pid);return p.ProcessName.Equals(step.ProcessName,StringComparison.OrdinalIgnoreCase)&&Validation.Hash(p.MainModule!.FileName).GetAwaiter().GetResult()==step.ProcessImageSha256;}catch{return false;}}
  public static AutomationElement? Find(UiStep step,Func<int,bool> allowed)
  {
   var windows=AutomationElement.RootElement.FindAll(TreeScope.Children,new PropertyCondition(AutomationElement.NameProperty,step.WindowTitle));var matches=new List<AutomationElement>();
@@ -40,7 +43,8 @@ public static class UiAutomationEngine
  }
  public static void Apply(AutomationElement element,UiStep step)
  {
-  if(element.Current.IsPassword)throw new InvalidDataException("Kennwortfelder werden nicht automatisch ausgefüllt.");
+  if(step.Action=="SetSecretValue"){if(element.TryGetCurrentPattern(ValuePattern.Pattern,out var pattern)){((ValuePattern)pattern).SetValue(step.Value);return;}element.SetFocus();if(!element.Equals(AutomationElement.FocusedElement))throw new InvalidDataException("Vertrauliches Zielfeld konnte nicht fokussiert werden.");var keys=new List<Input>();Input Key(ushort key,uint flags)=>new(){Type=1,Data=new InputUnion{Keyboard=new KeyboardInput{VirtualKey=key,Flags=flags}}};keys.Add(Key(0x11,0));keys.Add(Key(0x41,0));keys.Add(Key(0x41,2));keys.Add(Key(0x11,2));keys.Add(Key(0x08,0));keys.Add(Key(0x08,2));foreach(var c in step.Value){keys.Add(new(){Type=1,Data=new InputUnion{Keyboard=new KeyboardInput{Scan=c,Flags=4}}});keys.Add(new(){Type=1,Data=new InputUnion{Keyboard=new KeyboardInput{Scan=c,Flags=6}}});}if(SendInput((uint)keys.Count,keys.ToArray(),Marshal.SizeOf<Input>())!=(uint)keys.Count)throw new IOException("Vertrauliches Feld konnte nicht vollständig eingegeben werden.");return;}
+  if(element.Current.IsPassword)throw new InvalidDataException("Kennwortfelder erfordern einen ausdrücklich aufgenommenen vertraulichen Schritt.");
   switch(step.Action){case "Invoke":((InvokePattern)element.GetCurrentPattern(InvokePattern.Pattern)).Invoke();break;case "Select":((SelectionItemPattern)element.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();break;case "SetValue":((ValuePattern)element.GetCurrentPattern(ValuePattern.Pattern)).SetValue(Expand(step.Value));break;case "Toggle":var toggle=(TogglePattern)element.GetCurrentPattern(TogglePattern.Pattern);var desired=step.Value=="On"?ToggleState.On:ToggleState.Off;if(toggle.Current.ToggleState!=desired)toggle.Toggle();if(toggle.Current.ToggleState!=desired)throw new InvalidDataException("Kontrollkästchen hat nicht den erwarteten Zustand.");break;default:throw new InvalidDataException("Nicht unterstützte Aktion.");}
  }
  public static Func<int,bool> ProcessFilter(int root,bool msi,HashSet<int>? extra=null)=>pid=>pid==root||(extra?.Contains(pid)??false)||IsDescendant(pid,root)||(msi&&SafeProcessName(pid)=="msiexec");
@@ -52,6 +56,11 @@ public static class UiAutomationEngine
  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)]private static extern bool Process32NextW(IntPtr snapshot,ref Entry entry);
  [DllImport("kernel32.dll")]private static extern bool CloseHandle(IntPtr handle);
  private static Dictionary<int,int> ParentMap(){var result=new Dictionary<int,int>();var handle=CreateToolhelp32Snapshot(2,0);if(handle==new IntPtr(-1))return result;try{var e=new Entry{Size=(uint)Marshal.SizeOf<Entry>(),Name=""};if(Process32FirstW(handle,ref e))do{result[(int)e.Pid]=(int)e.Parent;}while(Process32NextW(handle,ref e));}finally{CloseHandle(handle);}return result;}
+ [StructLayout(LayoutKind.Sequential)]private struct Input{public uint Type;public InputUnion Data;}
+ [StructLayout(LayoutKind.Explicit)]private struct InputUnion{[FieldOffset(0)]public KeyboardInput Keyboard;[FieldOffset(0)]public NativeMouseInput Mouse;}
+ [StructLayout(LayoutKind.Sequential)]private struct KeyboardInput{public ushort VirtualKey,Scan;public uint Flags,Time;public IntPtr Extra;}
+ [StructLayout(LayoutKind.Sequential)]private struct NativeMouseInput{public int X,Y;public uint Data,Flags,Time;public IntPtr Extra;}
+ [DllImport("user32.dll",SetLastError=true)]private static extern uint SendInput(uint count,Input[] input,int size);
  public static Process StartInstaller(string path,string arguments)
  {
   var msi=System.IO.Path.GetExtension(path).Equals(".msi",StringComparison.OrdinalIgnoreCase);var info=new ProcessStartInfo(msi?System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"msiexec.exe"):path){UseShellExecute=false,Arguments=msi?"/i "+IsoBuilder.Quote(path)+" "+arguments:arguments,WorkingDirectory=System.IO.Path.GetDirectoryName(path)!};return Process.Start(info)??throw new IOException("Installer konnte nicht gestartet werden.");
@@ -61,7 +70,7 @@ public static class UiAutomationEngine
   profile.Validate();if(await Validation.Hash(installer,ct)!=profile.InstallerSha256)throw new InvalidDataException("Installer stimmt nicht mit der Aufzeichnung überein.");
   var verification=Expand(profile.VerificationFile);if(File.Exists(verification))throw new InvalidDataException("Prüfdatei existiert bereits. Für den Profiltest eine frische Umgebung verwenden.");
   using var process=StartInstaller(installer,profile.InstallerArguments);var allowed=ProcessFilter(process.Id,System.IO.Path.GetExtension(installer).Equals(".msi",StringComparison.OrdinalIgnoreCase));
-  try{foreach(var step in profile.Steps){log("Schritt: "+step.Action+" · "+step.Name);var until=DateTime.UtcNow.AddSeconds(step.TimeoutSeconds);AutomationElement? element=null;while(DateTime.UtcNow<until){ct.ThrowIfCancellationRequested();try{element=Find(step,allowed);}catch(ElementNotAvailableException){}if(element!=null)break;await Task.Delay(200,ct);}if(element==null)throw new TimeoutException("Fenster/Steuerelement nicht gefunden: "+step.WindowTitle+" / "+step.Name);Apply(element,step);await Task.Delay(300,ct);}
+  try{foreach(var step in profile.Steps){log("Schritt: "+step.Action+" · "+(step.Action=="SetSecretValue"?"Vertrauliches Feld":step.Name));var until=DateTime.UtcNow.AddSeconds(step.TimeoutSeconds);AutomationElement? element=null;while(DateTime.UtcNow<until){ct.ThrowIfCancellationRequested();try{element=Find(step,pid=>allowed(pid)||MatchesExternal(step,pid));}catch(ElementNotAvailableException){}if(element!=null)break;await Task.Delay(200,ct);}if(element==null)throw new TimeoutException("Fenster/Steuerelement nicht gefunden: "+step.WindowTitle+" / "+step.Name);Apply(element,step);await Task.Delay(300,ct);}
    await process.WaitForExitAsync(ct);var code=process.ExitCode;if(code is not (0 or 3010))throw new IOException("Installer-Exitcode: "+code);
    if(!File.Exists(verification))throw new IOException("Installation nicht bestätigt: neue Prüfdatei fehlt.");log("Installation anhand neuer Prüfdatei bestätigt.");return code;
   }catch{try{if(!process.HasExited)process.Kill(true);}catch{}throw;}

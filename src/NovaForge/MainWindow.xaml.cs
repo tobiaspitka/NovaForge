@@ -7,7 +7,7 @@ namespace NovaForge;
 public partial class MainWindow : Window
 {
  public MainViewModel Model{get;}=new();
- public MainWindow(){InitializeComponent();DataContext=Model;Closing+=OnClosing;Model.EditorValid=()=>!HasValidationError(this);Model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(MainViewModel.Setup))ClearPasswordFields(this);};}
+ public MainWindow(){InitializeComponent();DataContext=Model;Closing+=OnClosing;Closed+=(_,_)=>Model.Close();Model.EditorValid=()=>!HasValidationError(this);Model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(MainViewModel.Setup))ClearPasswordFields(this);};}
  private static void ClearPasswordFields(DependencyObject node){if(node is PasswordBox box)box.Clear();for(int i=0;i<VisualTreeHelper.GetChildrenCount(node);i++)ClearPasswordFields(VisualTreeHelper.GetChild(node,i));}
  private static bool HasValidationError(DependencyObject node){if(System.Windows.Controls.Validation.GetHasError(node))return true;for(int i=0;i<VisualTreeHelper.GetChildrenCount(node);i++)if(HasValidationError(VisualTreeHelper.GetChild(node,i)))return true;return false;}
  private void OnClosing(object? sender,CancelEventArgs e){if(Model.Busy){e.Cancel=true;Model.Status="Bitte den laufenden Vorgang erst abbrechen oder abschließen lassen.";}}

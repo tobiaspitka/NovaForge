@@ -1,20 +1,28 @@
-# NovaForge Beta · Installationsstudio
+# NovaForge 1.2.0-beta.3 · Installationsstudio
 
-Neue Seitennavigation, sechs Arbeitsbereiche und sichtbare Beta-Kennzeichnung. Die stabile [Version 1.1.1](https://github.com/tobiaspitka/NovaForge/releases/tag/v1.1.1) bleibt verfügbar.
+Neue Beta mit Aufnahmebibliothek, automatischer Übernahme, Bereinigung und USB-/Ordnerquellen. Die stabile [Version 1.1.1](https://github.com/tobiaspitka/NovaForge/releases/tag/v1.1.1) bleibt verfügbar.
 
 ## Aufnahme und Wiederholung
 
-1. Installer unter Programme auswählen, dann Installationsstudio öffnen.
-2. Aufnahme in Windows Sandbox starten und Installer bedienen. Zugängliche Schaltflächen, Optionen und Auswahlfelder werden über UI Automation erfasst. Textfelder ausdrücklich mit F8 übernehmen; Passwörter werden nicht aufgezeichnet.
-3. Eine neu installierte Datei als Erfolgskriterium auswählen und Profil speichern. Output/profile.json auf dem Host importieren.
-4. Erste Sandbox schließen und Wiederholung in einer frischen Sandbox testen. Das erfolgreich getestete Profil erneut importieren.
-5. Programm und Profil in die ISO übernehmen. Wiedergabe läuft am Ziel im Benutzerkontext; erforderliche UAC-Bestätigung bleibt interaktiv.
+1. Installer unter Programme auswählen und Installationsstudio öffnen. Falls erforderlich „Windows Sandbox aktivieren“ anklicken, Administratorfreigabe bestätigen und Windows anschließend manuell neu starten. Die Aktivierung setzt eine unterstützte Windows-Edition und Virtualisierung voraus.
+2. Aufnahme starten und den Installer in der Sandbox bedienen. Recorder und Wiedergabe laufen mit Administratorrechten. Zugängliche Schaltflächen, Optionen und Auswahlfelder werden erfasst. Textfelder mit F8 aufnehmen. Für Lizenzschlüssel oder Kennwort das Zielfeld fokussieren, F9 drücken und den Wert ausdrücklich eingeben.
+3. Zusätzliche Fenster außerhalb des ursprünglichen Installerprozesses über „Installerfenster verbinden“ auswählen, danach normal bedienen. Die Prozessdatei wird per SHA-256 gebunden; eine andere Version wird nicht automatisch akzeptiert. Windows-UAC auf dem geschützten Desktop bleibt manuell. Windows Sandbox unterstützt nicht jede Treiber-/Hardwareinstallation; kein universeller Treiber-Test zugesichert.
+4. Eine neu installierte Programmdatei als Erfolgskriterium wählen, „Speichern & Sandbox schließen“ drücken. Die Sandbox beendet sich; NovaForge übernimmt das Profil automatisch in „Meine Aufnahmen“ und ordnet es dem passenden Installer zu.
+5. „Aufnahme frisch testen“ starten. Das erfolgreich getestete Profil wird automatisch übernommen und kann für die ISO genutzt werden. Bereits gespeicherte Aufnahmen lassen sich in der Bibliothek auswählen und einem passenden Installer zuordnen.
 
-Windows Sandbox muss verfügbar sein (unterstützte Windows-Edition und Virtualisierung). Eingabeordner sind schreibgeschützt, ein eigener Ausgabeordner ist beschreibbar. Netzwerk ist standardmäßig deaktiviert; die Webinstaller-Option aktiviert es. Zwischenablage ist deaktiviert. Recorder und ISO-Integration benötigen die veröffentlichte portable Beta-EXE.
+Die Bibliothek liegt unter `%LOCALAPPDATA%\NovaForge\Beta\Recordings`. Große Installer-/EXE-Kopien in RecorderSessions werden erst nach gesicherter Übernahme und beendeter Sandbox gelöscht. Fehlermeldungen bleiben als kleine Diagnoseprotokolle erhalten. Abgebrochene Sitzungen ohne Profil werden nach Schließen der Sandbox und einer Wartezeit bereinigt. Nicht übernommene Profile werden nicht gelöscht. Ist NovaForge geschlossen, erfolgt Übernahme und Bereinigung beim nächsten Start.
 
-Profile sind an die Installer-Prüfsumme gebunden. Änderungen entwerten den Test. Fehlende oder mehrdeutige Steuerelemente stoppen die Wiedergabe. Installer mit selbst gezeichneten Oberflächen oder wechselnden Dialogen können scheitern. Bestehende Silent-Installation bleibt verfügbar.
+**Vertrauliche Schritte enthalten Lizenzschlüssel oder Kennwörter im Klartext.** Sie liegen im Aufnahmeprofil und auf der erzeugten ISO. Listen und normale Wiedergabeprotokolle zeigen die Werte nicht an. Bibliothek, ISO und USB-Medien nur berechtigten Personen zugänglich machen. Lokale Windows-Kontokennwörter aus den Setup-Optionen werden weiterhin nicht im Projekt gespeichert.
 
-Windows Sandbox ist auf dem Entwicklungsgerät nicht vorhanden. Echte Drittanbieter-Installer in Sandbox und vollständige ISO-/Windows-Setup-Läufe wurden nicht geprüft. Die UI-Automation wurde mit einer eigenen harmlosen Testanwendung geprüft.
+Eingabeordner sind schreibgeschützt, nur der separate Ausgabeordner ist beschreibbar. Netzwerk ist standardmäßig deaktiviert; die Webinstaller-Option aktiviert es. Zwischenablage ist deaktiviert. Die veröffentlichte portable Beta-EXE ist erforderlich. Profile sind an Installer-Prüfsumme und unveränderten getesteten Ablauf gebunden. Bei fehlenden oder mehrdeutigen Steuerelementen stoppt die Wiedergabe. Aufnahmen aus älteren Betas gegebenenfalls erneut testen.
+
+## USB-Stick oder entpacktes Medium → ISO
+
+Unter Windows-Medium „USB / Medienordner auswählen“ anklicken und den Stammordner mit setup.exe, sources und Bootdateien wählen. Die Quelle wird nur gelesen und zunächst bytegetreu in einen temporären Arbeitsordner kopiert. Ausgabe und Arbeitsverzeichnis außerhalb der Quelle wählen; am besten auf einem anderen Laufwerk. Auch geteilte install.swm-Abbilder werden unterstützt. Microsoft oscdimg aus den ADK Deployment Tools bleibt erforderlich.
+
+Ohne aktivierte Programme oder Setup-Anpassungen wird das vorhandene Medium einschließlich vorhandener Antwortdateien/OEM-Anpassungen wieder zur ISO. Bei neuen Anpassungen werden bestehende Antwortdateien/OEM-Anpassungen als Konflikt gemeldet. Ventoy-Sticks, einzelne ISO-Dateien ohne entpacktes Windows-Setup und reine Wiederherstellungsmedien sind keine unterstützten Ordnerquellen. Fehlende Bootdateien werden nicht erfunden.
+
+Windows Sandbox und echte Drittanbieter-Installer wurden hier nicht ausgeführt. Die UI-Automation wurde mit der eigenen harmlosen Testanwendung geprüft; Ordnerkopie, Hashprüfung und Bereinigungsgrenzen mit Testdateien. Eine vollständige Windows-Installation und USB→ISO mit einem echten Windows-Medium wurden mangels Testmedium/oscdimg nicht geprüft.
 # NovaForge
 
 Eine lokale Windows-Desktop-Anwendung zum Erstellen eigener Windows-10/11-x64-Installationsmedien mit Programmen und wählbaren Setup-Einstellungen.
@@ -58,7 +66,7 @@ Native Datei-/Ordnerdialoge folgen dem Windows-Design. Die Anwendung hat ein dun
 
 Alle Optionen betreffen ausschließlich die neue ISO und deren Zielinstallation. Windows Update, Defender und Aktivierung werden nicht verändert; keine Aktivierungsumgehung. CPU-Instruktionsanforderungen wie SSE4.2/POPCNT bleiben bestehen. Installationen auf ungeeigneter Hardware sind nicht von Microsoft unterstützt und müssen mit der konkreten ISO geprüft werden.
 
-**Kennwörter werden nicht in Projekten oder Protokollen gespeichert.** Nach Projektöffnung erneut eingeben. Die ISO-Antwortdatei benötigt das Kennwort: Windows-SIM-Base64 ist Kodierung, keine Verschlüsselung. Die ISO vertraulich behandeln. [Microsoft: lokale Konten](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-shell-setup-useraccounts-localaccounts-localaccount), [sprachunabhängige Kontengruppen](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-shell-setup-useraccounts-localaccounts-localaccount-group).
+**Lokale Windows-Kontokennwörter werden nicht in Projekten oder Protokollen gespeichert.** Nach Projektöffnung erneut eingeben. Die ISO-Antwortdatei benötigt das Kennwort: Windows-SIM-Base64 ist Kodierung, keine Verschlüsselung. Die ISO vertraulich behandeln. [Microsoft: lokale Konten](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-shell-setup-useraccounts-localaccounts-localaccount), [sprachunabhängige Kontengruppen](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-shell-setup-useraccounts-localaccounts-localaccount-group).
 
 Lokale Konten über Antwortdateien sind dokumentiert. BypassNRO und LabConfig sind keine allgemein garantierten Microsoft-Setup-APIs. Referenz für das Verfahren: [Rufus-Implementierung](https://github.com/pbatard/rufus/blob/master/src/wue.c). Rufus-Code und -Werkzeuge werden nicht mitgeliefert. [Microsoft: Entfernung bekannter Offline-OOBE-Mechanismen](https://blogs.windows.com/windows-insider/2025/10/06/announcing-windows-11-insider-preview-build-26220-6772-dev-channel/).
 
@@ -80,7 +88,7 @@ Die Quelle wird read-only eingebunden. DISM prüft boot.wim auf Windows 10.x/x64
 
 oscdimg erzeugt UDF 1.02 mit BIOS-/UEFI-Bootdaten, soweit vorhanden. Die Ausgabe wird erneut eingebunden; alle Dateigrößen und SHA-256 sowie Antwortdatei und El-Torito-Bootkatalog werden geprüft. Erst dann wird der endgültige Dateiname übernommen. [Microsoft: oscdimg](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/oscdimg-command-line-options).
 
-Projektformat **2** speichert Dateien, Hashes, Programme, Reihenfolge, Abhängigkeiten und Setup-/Ausgabeoptionen. Version-1-Projekte werden migriert. Relative Pfade sind relativ zur Projektdatei. Fehlende/geänderte Dateien ausdrücklich neu zuordnen; Kennwörter bleiben aus JSON ausgeschlossen. [Quelloffenes Beispiel](examples/README.md).
+Projektformat **3** speichert Dateien, Hashes, Programme, Reihenfolge, Abhängigkeiten und Setup-/Ausgabeoptionen. Version-1-Projekte werden migriert. Relative Pfade sind relativ zur Projektdatei. Fehlende/geänderte Dateien ausdrücklich neu zuordnen; Lokale Windows-Kontokennwörter bleiben aus Projekt-JSON ausgeschlossen; vertrauliche Recorder-Schritte sind im separaten Profil enthalten. [Quelloffenes Beispiel](examples/README.md).
 
 ## Versionen und Entwicklung
 
@@ -109,4 +117,3 @@ Build-Protokoll: <Ausgabe>.iso.log. Systemstatus/-logs: %WINDIR%\NovaForge\State
 Bei Hashfehlern nur beabsichtigt aktualisierte Dateien neu zuordnen. Bei 3010 nach Setup neu starten. Fehler/Interrupted zunächst anhand installierter Produkte und Protokolle prüfen. Für gezielte Wiederholung Aufgaben deaktivieren, nur betreffende Fehler- und abhängige Blocked-Einträge aus state.json entfernen, Aufgaben reaktivieren. Erfolgreiche Einträge erhalten und niemals eine laufende Warteschlange bearbeiten.
 
 **Prüfstand:** Build, Kernlogik, echte harmlose Prozesse, UI-Layout und EXE-Start wurden unter Windows geprüft. Ohne bereitgestellte Original-ISO, oscdimg und Test-VM sind vollständige ADK-ISO-Erstellung, Boot, Windows-Neuinstallation und Hardware-/OOBE-/Konteneffekte noch nicht praktisch abgenommen. Experimentelle Schalter werden nicht als universell garantiert bezeichnet. [Details und VM-Testplan](TESTPROTOKOLL.md).
-

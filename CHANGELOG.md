@@ -1,3 +1,11 @@
+## 1.2.0-beta.3
+
+- Automatische Aufnahmeübernahme, persistente Bibliothek und direkte Zuordnung zu passenden Installer-Versionen.
+- Aufnahme und Wiedergabe mit Administratorrechten; explizit verbundene Zusatzfenster mit Prozessprüfsumme.
+- Gezielte Lizenz-/Kennwortschritte über F9 mit deutlicher Vertraulichkeitskennzeichnung.
+- Windows-Sandbox-Aktivierungsbutton ohne automatischen Host-Neustart.
+- Große Sandbox-Sitzungskopien nach sicherer Übernahme und geschlossenem Gast bereinigen; kleine Diagnosen erhalten.
+- USB-/Medienordner als schreibgeschützte Quelle und Rückwandlung zur ISO ohne zusätzliche Anpassungen.
 # Beta 1.2
 
 - Neue Seitennavigation und sichtbar gekennzeichnetes Beta-Design.
@@ -31,4 +39,3 @@ Die Windows-Setup-/VM-Abnahme steht aus. LabConfig und Offline-OOBE sind buildab
 - OEM-Payload, specialize-Installationssteuerung und wiederaufnehmbare Warteschlange.
 - Bootfähige ISO-Erstellung mittels Microsoft oscdimg; Dateihash- und Bootkatalogprüfung.
 - Portable, selbstenthaltende Windows-x64-EXE mit .NET 10 LTS.
-
