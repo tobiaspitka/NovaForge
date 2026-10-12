@@ -1,9 +1,9 @@
-# Beta 1.2.0-beta.3 · Prüfstand
+# Beta 1.2.0-beta.5 · Prüfstand
 
-- 36 Kernprüfungen: unter anderem USB-/Ordnerkopie mit Bytevergleich, Quelländerungen, Manifest-Hashes, Pfadüberlappung, SWM-Sätze und Projektpersistierung.
-- 15 echte Prozess-/Runnerprüfungen und 4 Versionsprüfungen.
-- Sechs echte WPF-Seiten auf Layout, Bindings und Dispatcherfehler geprüft.
-- 31 Automationsprüfungen mit der eigenen harmlosen Testanwendung: reale UIA-Aktionen, ausdrückliche Kennworteingabe, Geheimwerte aus normalen Logs ausgeblendet, separate Prozessfenster, Hashbindung, Bibliotheksübernahme und Zuordnung, Sandbox-Feature-Status, Bereinigungsgrenzen.
-- Publish prüft die portable EXE ohne benachbarte DLLs und mit absichtlich ungültigem DOTNET_ROOT. Nur danach erfolgt die lokale Versionssicherung.
+Zusätzlich zu bisherigen Kern-/Runner-/Versionsprüfungen werden echte Aufnahmen getestet: UIA-Checkboxänderung, Abschlussaktion, Profilablage, beliebige Aufnahmenamen, Entwürfe ohne Prüfdatei, eindeutige Hostbestätigung und deren Entwertung nach Änderungen. Der native Klickpfad wird nur betätigt, wenn das eigene Testfenster tatsächlich im Vordergrund liegt; andernfalls wird der semantische UIA-Pfad geprüft und der native Teil ausdrücklich übersprungen. Die Testanwendung wartet kurz vor dem Prozessende, damit Providerereignisse zugestellt werden können.
 
-Windows Sandbox ist auf dem Entwicklungsgerät weiterhin deaktiviert. Der Aktivierungsbutton wurde nicht auf dem Host betätigt; Gastaufzeichnung, Gast-Shutdown, vollständige Sandbox-Sitzungsübernahme und echte Treiberinstaller wurden nicht durchlaufen. Die zugrunde liegenden UIA-/Bibliotheks-/Kopier-/Bereinigungsfunktionen wurden mit Testdaten geprüft. Für vollständiges USB→ISO/Windows-Setup fehlen echtes Testmedium und oscdimg; keine End-to-End-Abnahme behauptet.
+Installerpakete werden mit harmlosen Dateien inklusive INF-/SYS-Begleitdateien auf Dateinamen, Struktur und Bytegleichheit geprüft. Die Dateien sind reine Testdaten; es wird kein Treiber installiert. Die sechs WPF-Seiten und die portable EXE werden weiterhin geprüft.
+
+Windows Sandbox bleibt auf dem Entwicklungsgerät deaktiviert. Gastaufzeichnung, Gast-Shutdown und vollständige Aufnahmeübernahme in einer echten Sandbox wurden nicht durchlaufen. Echte Hardwaretreiber und vollständiges ISO-/Windows-Setup wurden mangels Testumgebung nicht geprüft. Lokale Versionsstände werden erst nach bestandenem Build und Starttest gespeichert.
+
+Die Abfrage zusätzlicher Prozesse verwendet PROCESS_QUERY_LIMITED_INFORMATION. VNC mit virtuellem Bildschirmtreiber wurde hier nicht installiert. Aktueller lokaler Prüfstand: 38 Kern-, 17 Runner-, 4 Versions- und 39 Automationsprüfungen; sechs WPF-Seiten. Der native Klicktest wurde im letzten Lauf mangels Vordergrundfenster übersprungen; UIA-Ereignisaufnahme wurde real geprüft.

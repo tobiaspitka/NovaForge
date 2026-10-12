@@ -7,9 +7,10 @@ using Condition = System.Windows.Automation.Condition;
 namespace NovaForge.Automation;
 public static class UiAutomationEngine
 {
- public static readonly Dictionary<string,Environment.SpecialFolder> Folders=new(){["{ProgramFilesX86}"]=Environment.SpecialFolder.ProgramFilesX86,["{ProgramFiles}"]=Environment.SpecialFolder.ProgramFiles,["{LocalAppData}"]=Environment.SpecialFolder.LocalApplicationData,["{ProgramData}"]=Environment.SpecialFolder.CommonApplicationData,["{UserProfile}"]=Environment.SpecialFolder.UserProfile};
- public static string Normalize(string value){foreach(var f in Folders.OrderByDescending(x=>Environment.GetFolderPath(x.Value).Length)){var path=Environment.GetFolderPath(f.Value);if(path.Length>0)value=value.Replace(path,f.Key,StringComparison.OrdinalIgnoreCase);}return value;}
- public static string Expand(string value){foreach(var f in Folders)value=value.Replace(f.Key,Environment.GetFolderPath(f.Value),StringComparison.Ordinal);return value;}
+ public static readonly Dictionary<string,Environment.SpecialFolder> Folders=new(){["{ProgramFilesX86}"]=Environment.SpecialFolder.ProgramFilesX86,["{ProgramFiles}"]=Environment.SpecialFolder.ProgramFiles,["{LocalAppData}"]=Environment.SpecialFolder.LocalApplicationData,["{Windows}"]=Environment.SpecialFolder.Windows,["{ProgramData}"]=Environment.SpecialFolder.CommonApplicationData,["{UserProfile}"]=Environment.SpecialFolder.UserProfile};
+ public static string InstallerDirectory {get;set;}="";
+ public static string Normalize(string value){if(InstallerDirectory.Length>0)value=value.Replace(InstallerDirectory,"{InstallerDirectory}",StringComparison.OrdinalIgnoreCase);foreach(var f in Folders.OrderByDescending(x=>Environment.GetFolderPath(x.Value).Length)){var path=Environment.GetFolderPath(f.Value);if(path.Length>0)value=value.Replace(path,f.Key,StringComparison.OrdinalIgnoreCase);}return value;}
+ public static string Expand(string value){if(InstallerDirectory.Length>0)value=value.Replace("{InstallerDirectory}",InstallerDirectory,StringComparison.Ordinal);foreach(var f in Folders)value=value.Replace(f.Key,Environment.GetFolderPath(f.Value),StringComparison.Ordinal);return value;}
  public static AutomationElement? TopWindow(AutomationElement element){var walker=TreeWalker.ControlViewWalker;for(int i=0;i<30&&element!=null;i++){var parent=walker.GetParent(element);if(parent==null||parent.Equals(AutomationElement.RootElement))return element;element=parent;}return null;}
  public static UiStep? Capture(AutomationElement element,bool captureText=false)
  {
@@ -28,8 +29,9 @@ public static class UiAutomationEngine
   return null;
  }
  public static UiStep CaptureSecret(AutomationElement element,string value){var window=TopWindow(element)??throw new InvalidDataException("Kein Fenster gefunden.");if(element.Current.ControlType!=ControlType.Edit)throw new InvalidDataException("Bitte ein Text- oder Kennwortfeld fokussieren.");return new(){Action="SetSecretValue",Value=value,WindowTitle=window.Current.Name,Name=element.Current.Name,AutomationId=element.Current.AutomationId,ClassName=element.Current.ClassName,ControlTypeId=element.Current.ControlType.Id};}
- public static void BindExternal(UiStep step,int pid){using var process=Process.GetProcessById(pid);var path=process.MainModule?.FileName??throw new IOException("Zusatzprozess kann nicht geprüft werden.");step.ProcessName=process.ProcessName;step.ProcessImageSha256=Validation.Hash(path).GetAwaiter().GetResult();}
- public static bool MatchesExternal(UiStep step,int pid){if(step.ProcessImageSha256.Length==0)return false;try{using var p=Process.GetProcessById(pid);return p.ProcessName.Equals(step.ProcessName,StringComparison.OrdinalIgnoreCase)&&Validation.Hash(p.MainModule!.FileName).GetAwaiter().GetResult()==step.ProcessImageSha256;}catch{return false;}}
+ public static string ProcessImagePath(int pid){var handle=OpenProcess(0x1000,false,(uint)pid);if(handle==IntPtr.Zero)throw new IOException("Zusatzfenster-Prozess kann nicht abgefragt werden (Win32 "+Marshal.GetLastWin32Error()+").");try{var path=new System.Text.StringBuilder(32768);var size=(uint)path.Capacity;if(!QueryFullProcessImageName(handle,0,path,ref size))throw new IOException("Zusatzfenster-Prozesspfad fehlt (Win32 "+Marshal.GetLastWin32Error()+").");return path.ToString();}finally{CloseHandle(handle);}}
+ public static void BindExternal(UiStep step,int pid){var path=ProcessImagePath(pid);step.ProcessName=Path.GetFileNameWithoutExtension(path);step.ProcessImageSha256=Validation.Hash(path).GetAwaiter().GetResult();}
+ public static bool MatchesExternal(UiStep step,int pid){if(step.ProcessImageSha256.Length==0)return false;try{var path=ProcessImagePath(pid);return Path.GetFileNameWithoutExtension(path).Equals(step.ProcessName,StringComparison.OrdinalIgnoreCase)&&Validation.Hash(path).GetAwaiter().GetResult()==step.ProcessImageSha256;}catch{return false;}}
  public static AutomationElement? Find(UiStep step,Func<int,bool> allowed)
  {
   var windows=AutomationElement.RootElement.FindAll(TreeScope.Children,new PropertyCondition(AutomationElement.NameProperty,step.WindowTitle));var matches=new List<AutomationElement>();
@@ -55,6 +57,8 @@ public static class UiAutomationEngine
  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)]private static extern bool Process32FirstW(IntPtr snapshot,ref Entry entry);
  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)]private static extern bool Process32NextW(IntPtr snapshot,ref Entry entry);
  [DllImport("kernel32.dll")]private static extern bool CloseHandle(IntPtr handle);
+ [DllImport("kernel32.dll",SetLastError=true)]private static extern IntPtr OpenProcess(uint access,bool inherit,uint pid);
+ [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true,EntryPoint="QueryFullProcessImageNameW")]private static extern bool QueryFullProcessImageName(IntPtr process,uint flags,System.Text.StringBuilder path,ref uint size);
  private static Dictionary<int,int> ParentMap(){var result=new Dictionary<int,int>();var handle=CreateToolhelp32Snapshot(2,0);if(handle==new IntPtr(-1))return result;try{var e=new Entry{Size=(uint)Marshal.SizeOf<Entry>(),Name=""};if(Process32FirstW(handle,ref e))do{result[(int)e.Pid]=(int)e.Parent;}while(Process32NextW(handle,ref e));}finally{CloseHandle(handle);}return result;}
  [StructLayout(LayoutKind.Sequential)]private struct Input{public uint Type;public InputUnion Data;}
  [StructLayout(LayoutKind.Explicit)]private struct InputUnion{[FieldOffset(0)]public KeyboardInput Keyboard;[FieldOffset(0)]public NativeMouseInput Mouse;}
@@ -68,11 +72,14 @@ public static class UiAutomationEngine
  public static async Task<int> Replay(RecordedProfile profile,string installer,Action<string> log,CancellationToken ct)
  {
   profile.Validate();if(await Validation.Hash(installer,ct)!=profile.InstallerSha256)throw new InvalidDataException("Installer stimmt nicht mit der Aufzeichnung überein.");
+  string? ownedPackage=null;if(profile.PackageSha256.Length>0){if(await FolderMedia.Digest(Path.GetDirectoryName(installer)!,ct)!=profile.PackageSha256)throw new InvalidDataException("Installer-Begleitdateien stimmen nicht mit der Aufnahme überein.");ownedPackage=Path.Combine(Path.GetTempPath(),"NovaForge-Replay-"+Guid.NewGuid().ToString("N"));await FolderMedia.Copy(Path.GetDirectoryName(installer)!,ownedPackage,new Progress<BuildProgress>(),ct);installer=Path.Combine(ownedPackage,Path.GetFileName(installer));}InstallerDirectory=Path.GetDirectoryName(installer)!;
+  try {
   var verification=Expand(profile.VerificationFile);if(File.Exists(verification))throw new InvalidDataException("Prüfdatei existiert bereits. Für den Profiltest eine frische Umgebung verwenden.");
   using var process=StartInstaller(installer,profile.InstallerArguments);var allowed=ProcessFilter(process.Id,System.IO.Path.GetExtension(installer).Equals(".msi",StringComparison.OrdinalIgnoreCase));
   try{foreach(var step in profile.Steps){log("Schritt: "+step.Action+" · "+(step.Action=="SetSecretValue"?"Vertrauliches Feld":step.Name));var until=DateTime.UtcNow.AddSeconds(step.TimeoutSeconds);AutomationElement? element=null;while(DateTime.UtcNow<until){ct.ThrowIfCancellationRequested();try{element=Find(step,pid=>allowed(pid)||MatchesExternal(step,pid));}catch(ElementNotAvailableException){}if(element!=null)break;await Task.Delay(200,ct);}if(element==null)throw new TimeoutException("Fenster/Steuerelement nicht gefunden: "+step.WindowTitle+" / "+step.Name);Apply(element,step);await Task.Delay(300,ct);}
    await process.WaitForExitAsync(ct);var code=process.ExitCode;if(code is not (0 or 3010))throw new IOException("Installer-Exitcode: "+code);
    if(!File.Exists(verification))throw new IOException("Installation nicht bestätigt: neue Prüfdatei fehlt.");log("Installation anhand neuer Prüfdatei bestätigt.");return code;
   }catch{try{if(!process.HasExited)process.Kill(true);}catch{}throw;}
+  }finally{if(ownedPackage!=null&&FolderMedia.Within(ownedPackage,Path.GetTempPath())){try{Directory.Delete(ownedPackage,true);}catch{}}}
  }
 }

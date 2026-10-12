@@ -109,7 +109,7 @@ public sealed class IsoBuilder
         if(!output.EndsWith(".iso",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Ausgabedatei muss die Endung .iso besitzen.");
         if(!File.Exists(p.OscdimgPath)||!System.IO.Path.GetFileName(p.OscdimgPath).Equals("oscdimg.exe",StringComparison.OrdinalIgnoreCase))throw new FileNotFoundException("Microsoft oscdimg.exe aus den ADK Deployment Tools auswählen.");
         var workRoot=System.IO.Path.GetFullPath(p.WorkDirectory);Directory.CreateDirectory(workRoot);Directory.CreateDirectory(System.IO.Path.GetDirectoryName(output)!);
-        var payloadSize=ordered.Sum(x=>new FileInfo(x.Path).Length);var sourceSize=folder?FolderMedia.Files(iso).Sum(x=>new FileInfo(x).Length):new FileInfo(iso).Length;
+        var payloadSize=ordered.Sum(x=>InstallerPackage.Files(x).Sum(f=>new FileInfo(f).Length));var sourceSize=folder?FolderMedia.Files(iso).Sum(x=>new FileInfo(x).Length):new FileInfo(iso).Length;
         var workDrive=new DriveInfo(System.IO.Path.GetPathRoot(workRoot)!);var outputDrive=new DriveInfo(System.IO.Path.GetPathRoot(output)!);
         var sameDrive=workDrive.Name.Equals(outputDrive.Name,StringComparison.OrdinalIgnoreCase);
         if(workDrive.AvailableFreeSpace<(sourceSize+payloadSize+536870912)*(sameDrive?2:1)||outputDrive.AvailableFreeSpace<sourceSize+payloadSize+536870912)throw new IOException("Nicht genügend freier Speicher. Benötigt: ISO-Kopie, Installer und neue ISO plus Reserve.");
@@ -136,12 +136,12 @@ public sealed class IsoBuilder
             {
                 var app=ordered[i];progress.Report(new("Installer integrieren: "+app.Name,(double)i/ordered.Count));
                 var hash=await Validation.Hash(app.Path,ct);if(app.Sha256.Length>0&&!app.Sha256.Equals(hash,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Installer verändert: "+app.Name+". Datei neu zuordnen.");app.Sha256=hash;
-                var dest=System.IO.Path.Combine(payload,"Installers",app.Id+System.IO.Path.GetExtension(app.Path));
-                await using(var input=File.OpenRead(app.Path))await using(var target=File.Create(dest))await input.CopyToAsync(target,ct);
+                var dest=await InstallerPackage.Copy(app,System.IO.Path.Combine(payload,"Installers",app.Id),ct);
+                if(app.AutomationMode=="Recorded"){var plan=await RecordedProfile.Load(app.RecordedProfilePath);if(plan.PackageSha256.Length>0&&await FolderMedia.Digest(System.IO.Path.GetDirectoryName(dest)!,ct)!=plan.PackageSha256)throw new InvalidDataException("Installer-Begleitdateien verändert. Aufnahme erneut erstellen: "+app.Name);}
                 if(await Validation.Hash(dest,ct)!=hash)throw new IOException("Kopierprüfung fehlgeschlagen: "+app.Name);
                 Log("Integriert (nicht ausgeführt): "+app.Name+" SHA256="+hash);
             }
-            var manifest=new{Version=1,BuildId=Guid.NewGuid().ToString("N"),SourceSha256=sourceHash,Programs=ordered.Select(x=>new{x.Id,x.Name,Path=System.IO.Path.GetFileName(x.Path),x.Type,x.Arguments,x.Context,x.TimeoutSeconds,x.Sha256,x.RebootPolicy,x.AutomationMode,x.RecordedProfileSha256,DependencyIds=x.DependencyIds.ToArray(),AllowedCodes=Validation.ParseCodes(x.AllowedExitCodes)})};
+            var manifest=new{Version=1,BuildId=Guid.NewGuid().ToString("N"),SourceSha256=sourceHash,Programs=ordered.Select(x=>new{x.Id,x.Name,Path=System.IO.Path.GetFileName(x.Path),InstallerRelativePath=x.Id+"/"+System.IO.Path.GetFileName(x.Path),PackageFiles=FolderMedia.Files(System.IO.Path.Combine(payload,"Installers",x.Id)).Select(f=>new{Path=System.IO.Path.GetRelativePath(System.IO.Path.Combine(payload,"Installers",x.Id),f),Sha256=Validation.Hash(f).GetAwaiter().GetResult()}).ToArray(),x.Type,x.Arguments,x.Context,x.TimeoutSeconds,x.Sha256,x.RebootPolicy,x.AutomationMode,x.RecordedProfileSha256,DependencyIds=x.DependencyIds.ToArray(),AllowedCodes=Validation.ParseCodes(x.AllowedExitCodes)})};
             await File.WriteAllTextAsync(System.IO.Path.Combine(payload,"manifest.json"),JsonSerializer.Serialize(manifest,Project.JsonOptions),new UTF8Encoding(true),ct);
             foreach(var script in new[]{"Bootstrap.ps1","Runner.ps1"})await File.WriteAllTextAsync(System.IO.Path.Combine(payload,script),Resource(script),new UTF8Encoding(true),ct);
             await File.WriteAllTextAsync(System.IO.Path.Combine(media,"autounattend.xml"),AnswerFile(p.Setup),new UTF8Encoding(true),ct);

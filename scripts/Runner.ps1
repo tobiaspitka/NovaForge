@@ -49,13 +49,15 @@ try {
   if($wait) {Log ('Abhängigkeit noch nicht abgeschlossen: '+$app.Name);return}
   if($blocked) {$state[$app.Id]=@{Status='Blocked';Message='Abhängigkeit fehlgeschlagen.'};Save-State;continue}
   $installer=Join-Path $root ('Installers\'+$app.Id+[IO.Path]::GetExtension($app.Path))
+  if($app.InstallerRelativePath){$packageRoot=[IO.Path]::GetFullPath((Join-Path $root ('Installers\'+$app.Id)));$installer=[IO.Path]::GetFullPath((Join-Path (Join-Path $root 'Installers') $app.InstallerRelativePath));if(!$installer.StartsWith($packageRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Ungültiger Installer-Paketpfad.'}}
   $process=$null
   try {
    if((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne $app.Sha256) {throw 'SHA-256-Prüfsumme stimmt nicht überein.'}
+   foreach($file in @($app.PackageFiles)){if(!$file){continue};$path=[IO.Path]::GetFullPath((Join-Path $packageRoot $file.Path));if(!$path.StartsWith($packageRoot+'\',[StringComparison]::OrdinalIgnoreCase) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $file.Sha256){throw 'Installer-Begleitdatei fehlt oder wurde verändert.'}}
    $state[$app.Id]=@{Status='Running';Started=(Get-Date -Format o)};Save-State
    Log ('Start: '+$app.Name+' ('+$Context+')')
    $info=New-Object Diagnostics.ProcessStartInfo
-   $info.UseShellExecute=$false; $info.WorkingDirectory=$base
+   $info.UseShellExecute=$false; $info.WorkingDirectory=[IO.Path]::GetDirectoryName($installer)
    if($app.AutomationMode -eq 'Recorded') {
     if($Context -ne 'User'){throw 'Recorder-Installation benötigt einen angemeldeten Benutzer.'}
     $profile=Join-Path $root ('Profiles\'+$app.Id+'.json')

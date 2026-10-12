@@ -1,28 +1,17 @@
-# NovaForge 1.2.0-beta.3 · Installationsstudio
+# NovaForge 1.2.0-beta.5 · Aufnahme- und Speicherfix
 
-Neue Beta mit Aufnahmebibliothek, automatischer Übernahme, Bereinigung und USB-/Ordnerquellen. Die stabile [Version 1.1.1](https://github.com/tobiaspitka/NovaForge/releases/tag/v1.1.1) bleibt verfügbar.
+- Aufnahme erfasst UIA-Ereignisse und beobachtet Klicks über vorab gelesene Selektoren. Keine UIA-/Dateiprüfung im zeitkritischen Eingabe-Hook. Aufnahmefehler werden angezeigt und protokolliert.
+- Für zusätzliche Windows-Treiberbestätigungen (z. B. beim VNC-Bildschirmtreiber) wird der Prozesspfad mit begrenzten Abfragerechten statt über Modulzugriff ermittelt. Der Dialog wird als eigenes Fenster erfasst; ein echter VNC-/Treiberlauf wurde hier nicht durchgeführt.
+- Installer wird im Gast automatisch gestartet; zusätzliche Installations-/Treiberfenster werden standardmäßig mit erfasst. Über den Schalter kann dies abgeschaltet werden. UAC auf dem geschützten Desktop bleibt manuell.
+- Aufnahme jederzeit als Entwurf speichern, auch bei laufendem Installer oder fehlender Prüfdatei. Entwürfe bleiben in der Bibliothek, benötigen vor ISO-Nutzung aber einen erfolgreichen frischen Test.
+- Namen im Host und Gast frei vergeben. Gespeicherte Aufnahmen über „Name / Prüfdatei bearbeiten“ ändern und mit selbst gewähltem Dateinamen exportieren.
+- „Speichern und schließen“ wartet auf die Bestätigung des Hosts. Derselbe Sitzungsordner kann mehrere aktualisierte Profilstände übertragen; veraltete Bestätigungen werden nicht akzeptiert.
+- Begleitordner mit Installer, Treiberdateien und Unterordnern auswählen. Originaldateiname und Verzeichnisstruktur bleiben in Sandbox und ISO erhalten. Paketinhalte sind prüfsummengebunden. Im Gast und bei Wiedergabe wird eine beschreibbare Arbeitskopie verwendet.
+- Neu installierte Dateien unter Windows/System32/drivers sind als Prüfnachweis möglich. Ordnerpfade innerhalb eines Installerpakets werden für die Wiedergabe angepasst.
 
-## Aufnahme und Wiederholung
+In der Sandbox F7 für eine fokussierte Aktion verwenden, falls ein Anbieter kein UI-Ereignis liefert. F8 übernimmt Text, F9 vertrauliche Werte. Vertrauliche Profile und ISO-Medien enthalten diese Werte im Klartext.
 
-1. Installer unter Programme auswählen und Installationsstudio öffnen. Falls erforderlich „Windows Sandbox aktivieren“ anklicken, Administratorfreigabe bestätigen und Windows anschließend manuell neu starten. Die Aktivierung setzt eine unterstützte Windows-Edition und Virtualisierung voraus.
-2. Aufnahme starten und den Installer in der Sandbox bedienen. Recorder und Wiedergabe laufen mit Administratorrechten. Zugängliche Schaltflächen, Optionen und Auswahlfelder werden erfasst. Textfelder mit F8 aufnehmen. Für Lizenzschlüssel oder Kennwort das Zielfeld fokussieren, F9 drücken und den Wert ausdrücklich eingeben.
-3. Zusätzliche Fenster außerhalb des ursprünglichen Installerprozesses über „Installerfenster verbinden“ auswählen, danach normal bedienen. Die Prozessdatei wird per SHA-256 gebunden; eine andere Version wird nicht automatisch akzeptiert. Windows-UAC auf dem geschützten Desktop bleibt manuell. Windows Sandbox unterstützt nicht jede Treiber-/Hardwareinstallation; kein universeller Treiber-Test zugesichert.
-4. Eine neu installierte Programmdatei als Erfolgskriterium wählen, „Speichern & Sandbox schließen“ drücken. Die Sandbox beendet sich; NovaForge übernimmt das Profil automatisch in „Meine Aufnahmen“ und ordnet es dem passenden Installer zu.
-5. „Aufnahme frisch testen“ starten. Das erfolgreich getestete Profil wird automatisch übernommen und kann für die ISO genutzt werden. Bereits gespeicherte Aufnahmen lassen sich in der Bibliothek auswählen und einem passenden Installer zuordnen.
-
-Die Bibliothek liegt unter `%LOCALAPPDATA%\NovaForge\Beta\Recordings`. Große Installer-/EXE-Kopien in RecorderSessions werden erst nach gesicherter Übernahme und beendeter Sandbox gelöscht. Fehlermeldungen bleiben als kleine Diagnoseprotokolle erhalten. Abgebrochene Sitzungen ohne Profil werden nach Schließen der Sandbox und einer Wartezeit bereinigt. Nicht übernommene Profile werden nicht gelöscht. Ist NovaForge geschlossen, erfolgt Übernahme und Bereinigung beim nächsten Start.
-
-**Vertrauliche Schritte enthalten Lizenzschlüssel oder Kennwörter im Klartext.** Sie liegen im Aufnahmeprofil und auf der erzeugten ISO. Listen und normale Wiedergabeprotokolle zeigen die Werte nicht an. Bibliothek, ISO und USB-Medien nur berechtigten Personen zugänglich machen. Lokale Windows-Kontokennwörter aus den Setup-Optionen werden weiterhin nicht im Projekt gespeichert.
-
-Eingabeordner sind schreibgeschützt, nur der separate Ausgabeordner ist beschreibbar. Netzwerk ist standardmäßig deaktiviert; die Webinstaller-Option aktiviert es. Zwischenablage ist deaktiviert. Die veröffentlichte portable Beta-EXE ist erforderlich. Profile sind an Installer-Prüfsumme und unveränderten getesteten Ablauf gebunden. Bei fehlenden oder mehrdeutigen Steuerelementen stoppt die Wiedergabe. Aufnahmen aus älteren Betas gegebenenfalls erneut testen.
-
-## USB-Stick oder entpacktes Medium → ISO
-
-Unter Windows-Medium „USB / Medienordner auswählen“ anklicken und den Stammordner mit setup.exe, sources und Bootdateien wählen. Die Quelle wird nur gelesen und zunächst bytegetreu in einen temporären Arbeitsordner kopiert. Ausgabe und Arbeitsverzeichnis außerhalb der Quelle wählen; am besten auf einem anderen Laufwerk. Auch geteilte install.swm-Abbilder werden unterstützt. Microsoft oscdimg aus den ADK Deployment Tools bleibt erforderlich.
-
-Ohne aktivierte Programme oder Setup-Anpassungen wird das vorhandene Medium einschließlich vorhandener Antwortdateien/OEM-Anpassungen wieder zur ISO. Bei neuen Anpassungen werden bestehende Antwortdateien/OEM-Anpassungen als Konflikt gemeldet. Ventoy-Sticks, einzelne ISO-Dateien ohne entpacktes Windows-Setup und reine Wiederherstellungsmedien sind keine unterstützten Ordnerquellen. Fehlende Bootdateien werden nicht erfunden.
-
-Windows Sandbox und echte Drittanbieter-Installer wurden hier nicht ausgeführt. Die UI-Automation wurde mit der eigenen harmlosen Testanwendung geprüft; Ordnerkopie, Hashprüfung und Bereinigungsgrenzen mit Testdateien. Eine vollständige Windows-Installation und USB→ISO mit einem echten Windows-Medium wurden mangels Testmedium/oscdimg nicht geprüft.
+Treiber, die echte Hardware, einen Kernelneustart oder nicht verfügbare Geräte benötigen, können in Windows Sandbox scheitern. Für diese Fälle ist eine passende Test-VM bzw. Testhardware erforderlich. Die Beta umgeht diese Windows-Sandbox-Grenzen nicht. Die vollständige Sandbox-/ISO-Abnahme wurde auf diesem Gerät nicht durchgeführt; genaue Prüfgrenzen stehen im Testprotokoll.
 # NovaForge
 
 Eine lokale Windows-Desktop-Anwendung zum Erstellen eigener Windows-10/11-x64-Installationsmedien mit Programmen und wählbaren Setup-Einstellungen.
@@ -117,3 +106,5 @@ Build-Protokoll: <Ausgabe>.iso.log. Systemstatus/-logs: %WINDIR%\NovaForge\State
 Bei Hashfehlern nur beabsichtigt aktualisierte Dateien neu zuordnen. Bei 3010 nach Setup neu starten. Fehler/Interrupted zunächst anhand installierter Produkte und Protokolle prüfen. Für gezielte Wiederholung Aufgaben deaktivieren, nur betreffende Fehler- und abhängige Blocked-Einträge aus state.json entfernen, Aufgaben reaktivieren. Erfolgreiche Einträge erhalten und niemals eine laufende Warteschlange bearbeiten.
 
 **Prüfstand:** Build, Kernlogik, echte harmlose Prozesse, UI-Layout und EXE-Start wurden unter Windows geprüft. Ohne bereitgestellte Original-ISO, oscdimg und Test-VM sind vollständige ADK-ISO-Erstellung, Boot, Windows-Neuinstallation und Hardware-/OOBE-/Konteneffekte noch nicht praktisch abgenommen. Experimentelle Schalter werden nicht als universell garantiert bezeichnet. [Details und VM-Testplan](TESTPROTOKOLL.md).
+
+Windows-Prozessabfrage: [Microsoft QueryFullProcessImageName](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew).

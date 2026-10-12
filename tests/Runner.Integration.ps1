@@ -59,6 +59,17 @@ try {
  $argsLogged=(Get-Content -LiteralPath $env:NOVAFORGE_TEST_MARKER)[-1]
  $s=State;Assert ($s.($msi.Id).Status -eq 'Success') 'MSI substitute exits successfully'
  Assert ($argsLogged -match '/qn' -and $argsLogged -match '/norestart' -and $argsLogged -match 'REBOOT=ReallySuppress' -and $argsLogged -match 'ALLUSERS=1' -and $argsLogged -match '/L\*v') 'Actual MSI argument construction includes quiet, restart suppression, log and context'
+ $packed=New-App 'Paket Erfolg' '0';$broken=New-App 'Paket geändert' '0'
+ foreach($app in @($packed,$broken)){
+  $dir=Join-Path $payload ('Installers\'+$app.Id);New-Item -ItemType Directory -Force (Join-Path $dir 'Drivers') | Out-Null
+  Move-Item -LiteralPath (Join-Path $payload ('Installers\'+$app.Id+'.exe')) -Destination (Join-Path $dir 'Original-Setup.exe')
+  $sidecar=Join-Path $dir 'Drivers\fixture.inf';[IO.File]::WriteAllText($sidecar,'harmless test data')
+  $app | Add-Member -NotePropertyName InstallerRelativePath -NotePropertyValue ($app.Id+'/Original-Setup.exe')
+  $app | Add-Member -NotePropertyName PackageFiles -NotePropertyValue @([PSCustomObject]@{Path='Drivers\fixture.inf';Sha256=(Get-FileHash -LiteralPath $sidecar).Hash})
+ }
+ Add-Content -LiteralPath (Join-Path $payload ('Installers\'+$broken.Id+'\Drivers\fixture.inf')) -Value 'changed'
+ Set-Manifest @($packed,$broken);& $runner -Context System -SetupPhase
+ $s=State;Assert ($s.($packed.Id).Status -eq 'Success') 'Packaged installer executes with original filename and verified driver sidecar';Assert ($s.($broken.Id).Status -eq 'Failed') 'Modified driver sidecar blocks packaged installer'
  $script:lines+=($script:passed.ToString()+' integration tests passed. No application was installed.');$script:lines | Set-Content -LiteralPath $ReportPath -Encoding UTF8
 } catch {
  if(Test-Path -LiteralPath $payload){Get-ChildItem -LiteralPath $payload -Recurse -File | Where-Object Extension -in '.log','.json' | ForEach-Object {Write-Output $_.FullName;Get-Content -LiteralPath $_.FullName}}

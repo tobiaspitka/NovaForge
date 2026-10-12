@@ -34,6 +34,7 @@ public sealed class Installer : Observable
     public string AutomationMode {get=>automationMode;set=>Set(ref automationMode,value);}
     public string RecordedProfilePath {get=>recordedProfilePath;set=>Set(ref recordedProfilePath,value);}
     public string RecordedProfileSha256 {get;set;}="";
+    public string CompanionDirectory {get;set;}="";
     public IEnumerable<string> DependencyIds => Dependencies.Split(',',StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries);
     public override string ToString()=>Name;
 }
@@ -60,7 +61,7 @@ public sealed class Project
         var directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
         string Resolve(string value)=>string.IsNullOrWhiteSpace(value)?value:System.IO.Path.GetFullPath(value,directory);
         p.IsoPath=Resolve(p.IsoPath);p.OutputPath=Resolve(p.OutputPath);p.OscdimgPath=Resolve(p.OscdimgPath);p.WorkDirectory=Resolve(p.WorkDirectory);
-        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);}
+        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);app.CompanionDirectory=Resolve(app.CompanionDirectory);}
         return p;
     }
     public async Task Save(string path) { var tmp=path+".tmp"; await File.WriteAllTextAsync(tmp,JsonSerializer.Serialize(this,JsonOptions)); File.Move(tmp,path,true); }
@@ -80,6 +81,7 @@ public static class Validation
         {
             if(string.IsNullOrWhiteSpace(a.Name)||string.IsNullOrWhiteSpace(a.Path)) throw new InvalidDataException("Name und Dateipfad sind Pflichtangaben.");
             if(files&&!File.Exists(a.Path)) throw new FileNotFoundException("Installer fehlt: "+a.Name,a.Path);
+            if(files&&a.CompanionDirectory.Length>0&&(!Directory.Exists(a.CompanionDirectory)||!FolderMedia.Within(a.Path,a.CompanionDirectory)))throw new InvalidDataException("Begleitordner muss den ausgewählten Installer enthalten: "+a.Name);
             if(!new[]{".msi",".exe"}.Contains(System.IO.Path.GetExtension(a.Path).ToLowerInvariant())) throw new InvalidDataException("Nur MSI und EXE: "+a.Name);
             if(a.Context is not ("System" or "User")) throw new InvalidDataException("Ungültiger Installationskontext.");
             if(a.TimeoutSeconds<10||a.TimeoutSeconds>86400) throw new InvalidDataException("Zeitlimit muss zwischen 10 und 86400 Sekunden liegen.");
