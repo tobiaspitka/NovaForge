@@ -13,4 +13,5 @@ public partial class MainWindow : Window
  private void FilesDragOver(object sender,DragEventArgs e){e.Effects=!Model.Busy&&e.Data.GetDataPresent(DataFormats.FileDrop)?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;}
  private void FilesDropped(object sender,DragEventArgs e){if(e.Data.GetData(DataFormats.FileDrop) is string[] paths)Model.AddFiles(paths);}
  private void ProfileChanged(object sender,SelectionChangedEventArgs e){if(sender is ComboBox{DataContext:Installer a} box && (box.IsKeyboardFocusWithin||box.IsDropDownOpen) && e.RemovedItems.Count>0 && Model.Editing)Model.ApplyProfile(a);}
+ private void LocalPasswordChanged(object sender,RoutedEventArgs e){if(sender is PasswordBox box && Model.Editing)Model.Setup.LocalUserPassword=box.Password;}
 }

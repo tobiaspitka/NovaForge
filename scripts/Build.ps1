@@ -10,3 +10,4 @@ if($LASTEXITCODE -ne 0){throw 'Tests fehlgeschlagen.'}
 if($LASTEXITCODE -ne 0){throw 'PowerShell-Integrationstests fehlgeschlagen.'}
 & $Dotnet run --project (Join-Path $root 'tests\NovaForge.UiTests\NovaForge.UiTests.csproj') -c Release -- (Join-Path $root 'artifacts\ui')
 if($LASTEXITCODE -ne 0){throw 'WPF-Tests fehlgeschlagen.'}
+& (Join-Path $PSScriptRoot 'Write-Validation.ps1')

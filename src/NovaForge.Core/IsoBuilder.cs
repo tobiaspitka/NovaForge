@@ -91,11 +91,7 @@ public sealed class IsoBuilder
             if(parts.Length!=first.Total||parts.Where((x,i)=>x.Id!=first.Id||x.Total!=first.Total||x.Part!=i+1).Any())throw new InvalidDataException("Geteiltes install.swm ist unvollständig oder seine Teile passen nicht zusammen.");
         }
     }
-    public static string AnswerFile()
-    {
-        XNamespace u="urn:schemas-microsoft-com:unattend",w="http://schemas.microsoft.com/WMIConfig/2002/State";
-        return new XDocument(new XDeclaration("1.0","utf-8",null),new XElement(u+"unattend",new XAttribute(XNamespace.Xmlns+"wcm",w),new XElement(u+"settings",new XAttribute("pass","specialize"),new XElement(u+"component",new XAttribute("name","Microsoft-Windows-Deployment"),new XAttribute("processorArchitecture","amd64"),new XAttribute("publicKeyToken","31bf3856ad364e35"),new XAttribute("language","neutral"),new XAttribute("versionScope","nonSxS"),new XElement(u+"RunSynchronous",new XElement(u+"RunSynchronousCommand",new XAttribute(w+"action","add"),new XElement(u+"Order",1),new XElement(u+"Description","NovaForge Installationssteuerung"),new XElement(u+"Path","powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%WINDIR%\\NovaForge\\Bootstrap.ps1\""),new XElement(u+"WillReboot","Never"))))))).ToString();
-    }
+    public static string AnswerFile(SetupOptions? options=null)=>UnattendBuilder.Build(options??new());
     public static string BootArgument(string media)
     {
         var bios=System.IO.Path.Combine(media,"boot","etfsboot.com");var uefi=System.IO.Path.Combine(media,"efi","microsoft","boot","efisys.bin");
@@ -138,7 +134,8 @@ public sealed class IsoBuilder
             var manifest=new{Version=1,BuildId=Guid.NewGuid().ToString("N"),SourceSha256=sourceHash,Programs=ordered.Select(x=>new{x.Id,x.Name,Path=System.IO.Path.GetFileName(x.Path),x.Type,x.Arguments,x.Context,x.TimeoutSeconds,x.Sha256,x.RebootPolicy,DependencyIds=x.DependencyIds.ToArray(),AllowedCodes=Validation.ParseCodes(x.AllowedExitCodes)})};
             await File.WriteAllTextAsync(System.IO.Path.Combine(payload,"manifest.json"),JsonSerializer.Serialize(manifest,Project.JsonOptions),new UTF8Encoding(true),ct);
             foreach(var script in new[]{"Bootstrap.ps1","Runner.ps1"})await File.WriteAllTextAsync(System.IO.Path.Combine(payload,script),Resource(script),new UTF8Encoding(true),ct);
-            await File.WriteAllTextAsync(System.IO.Path.Combine(media,"autounattend.xml"),AnswerFile(),new UTF8Encoding(true),ct);
+            await File.WriteAllTextAsync(System.IO.Path.Combine(media,"autounattend.xml"),AnswerFile(p.Setup),new UTF8Encoding(true),ct);
+            Log("Setup-Optionen integriert. Kennwörter sind nicht Bestandteil des Buildprotokolls.");
             var boot=BootArgument(media);Log("oscdimg Bootkonfiguration: "+boot);progress.Report(new("Bootfähige ISO erstellen",null));
             await Run(p.OscdimgPath,new[]{"-m","-o","-u2","-udfver102",boot,media,partial},Log,ct);
             if(!File.Exists(partial)||new FileInfo(partial).Length<sourceSize/2)throw new IOException("oscdimg-Ausgabe fehlt oder ist ungewöhnlich klein.");

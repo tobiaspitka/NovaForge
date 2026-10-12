@@ -1,0 +1,44 @@
+name: Build und Release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Bauen, testen und portable EXE erstellen
+        shell: pwsh
+        run: ./scripts/Package.ps1
+      - name: Buildpakete sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaForge-windows-x64
+          path: |
+            release/NovaForge-*.exe
+            release/NovaForge-*-win-x64.zip
+            release/NovaForge-*-Quellcode.zip
+            release/SHA256SUMS-*.txt
+      - name: Version auf GitHub veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$project=Get-Content src/NovaForge/NovaForge.csproj
+          $version=[string]$project.Project.PropertyGroup.Version
+          if($env:GITHUB_REF_NAME -ne "v$version"){throw 'Tag und Projektversion stimmen nicht überein.'}
+          gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY 2>$null
+          if($LASTEXITCODE -eq 0){Write-Output 'Release existiert bereits. Bestehende Downloads bleiben unverändert.';exit 0}
+          gh release create $env:GITHUB_REF_NAME "release/NovaForge-$version.exe" "release/NovaForge-$version-win-x64.zip" "release/NovaForge-$version-Quellcode.zip" "release/SHA256SUMS-$version.txt" --verify-tag --title "NovaForge $version" --notes "Portable Windows-x64-Version. Änderungen und Prüfgrenzen stehen in CHANGELOG.md und TESTPROTOKOLL.md."
+          if($LASTEXITCODE -ne 0){throw 'Release-Erstellung fehlgeschlagen.'}

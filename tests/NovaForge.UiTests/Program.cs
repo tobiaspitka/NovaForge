@@ -37,11 +37,11 @@ internal static class Program
     var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var s=File.Create(png))encoder.Save(s);
    }else if(File.Exists(png))File.Delete(png);
    if(page==1 && b.Arguments!="/custom-preserve")errors.Add("Profile binding changed custom parameters while switching selection.");
-   page++;if(page==4){timer.Stop();window.Close();frame.Continue=false;}else{window.Model.Tab=page;if(page==1){window.Model.Selected=a;window.Model.Selected=b;}}
+   page++;if(page==5){timer.Stop();window.Close();frame.Continue=false;}else{window.Model.Tab=page;if(page==1){window.Model.Selected=a;window.Model.Selected=b;}}
   };
   timer.Start();Dispatcher.PushFrame(frame);
   foreach(var e in errors)Console.Error.WriteLine(e);
-  var status=errors.Count==0?"PASS: four real WPF pages loaded and laid out; no dispatcher exceptions; parameter selection preserved.":"FAIL: WPF layout/binding exceptions.";
+  var status=errors.Count==0?"PASS: five real WPF pages loaded and laid out; no dispatcher exceptions; parameter selection preserved.":"FAIL: WPF layout/binding exceptions.";
   status+="\n"+(bitmapAvailable==true?"PASS: bitmap capture verified against red control drawing and content color count.":"SKIP: bitmap capture unavailable in current desktop session; even independent red drawing produced empty pixels. No blank screenshots delivered.");
   Console.WriteLine(status);File.WriteAllText(Path.Combine(directory,"render-status.txt"),status);
   return errors.Count==0?0:1;

@@ -35,18 +35,20 @@ public sealed class Installer : Observable
 }
 public sealed class Project
 {
-    public int Version { get; set; }=1;
+    public int Version { get; set; }=2;
     public string IsoPath { get; set; }="";
     public string IsoSha256 { get; set; }="";
     public string OutputPath { get; set; }="";
     public string WorkDirectory { get; set; }=System.IO.Path.GetTempPath();
     public string OscdimgPath { get; set; }="";
     public List<Installer> Programs { get; set; }=[];
+    public SetupOptions Setup {get;set;}=new();
     public static readonly JsonSerializerOptions JsonOptions=new(){WriteIndented=true,PropertyNameCaseInsensitive=true};
     public static async Task<Project> Load(string path)
     {
         var p=JsonSerializer.Deserialize<Project>(await File.ReadAllTextAsync(path),JsonOptions)??throw new InvalidDataException("Leere Projektdatei.");
-        if(p.Version!=1) throw new InvalidDataException("Nicht unterstützte Projektversion.");
+        if(p.Version is not (1 or 2)) throw new InvalidDataException("Nicht unterstützte Projektversion.");
+        p.Version=2;p.Setup??=new();
         if(p.Programs==null)throw new InvalidDataException("Programmliste fehlt im Projekt.");
         var directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
         string Resolve(string value)=>string.IsNullOrWhiteSpace(value)?value:System.IO.Path.GetFullPath(value,directory);
@@ -61,7 +63,8 @@ public static class Validation
     public static List<Installer> Ordered(Project p, bool files=true)
     {
         var active=p.Programs.Where(x=>x.Enabled).ToList();
-        if(active.Count==0) throw new InvalidDataException("Mindestens ein aktiviertes Programm hinzufügen.");
+        p.Setup.Validate();
+        if(active.Count==0&&!p.Setup.HasCustomization) throw new InvalidDataException("Mindestens ein Programm oder eine Setup-Option aktivieren.");
         if(p.Programs.Select(x=>x.Id).Distinct().Count()!=p.Programs.Count || p.Programs.Any(x=>!Guid.TryParseExact(x.Id,"N",out _))) throw new InvalidDataException("Ungültige oder doppelte Programm-IDs.");
         if(p.Programs.Any(x=>string.IsNullOrWhiteSpace(x.Name)||string.IsNullOrWhiteSpace(x.Path)))throw new InvalidDataException("Name und Dateipfad sind Pflichtangaben.");
         if(p.Programs.Select(x=>System.IO.Path.GetFullPath(x.Path)).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=p.Programs.Count) throw new InvalidDataException("Doppelte Installationsdateien.");

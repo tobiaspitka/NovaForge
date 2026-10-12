@@ -29,6 +29,9 @@ public sealed class MainViewModel : Observable
  private string iso="",output="",tool=IsoBuilder.FindOscdimg(),work=System.IO.Path.GetTempPath(),status="Bereit · Original-ISO auswählen und Programme hinzufügen.",log="",activity="Bereit",isoHash="";
  private bool busy,indeterminate;private double fraction;private int tab;private Installer? selected;private CancellationTokenSource? cancellation;private BuildResult? result;
  public ObservableCollection<Installer> Programs {get;}=[];
+ private SetupOptions setup=new();
+ public SetupOptions Setup {get=>setup;private set=>Set(ref setup,value);}
+ public string VersionText=>"Version "+(typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)??"1.1.0");
  public Func<bool> EditorValid {get;set;}=()=>true;
  public string[] Profiles {get;}=["Unbekannt / ungeprüft","MSI · Windows Installer","Inno Setup · Vorschlag","NSIS · Vorschlag","InstallShield · MSI-Wrapper Vorschlag"];
  public string IsoPath{get=>iso;set{if(Set(ref iso,value))isoHash="";Notify(nameof(IsoHint));}}
@@ -51,7 +54,7 @@ public sealed class MainViewModel : Observable
  public string ResultTitle=>result==null?"Noch keine ISO erstellt":"✓  ISO erfolgreich erstellt";
  public string ResultHash=>result?.Sha256??"";
  public string ResultText=>result==null?"Das Ergebnis erscheint nach einer vollständig abgeschlossenen Erstellung.":result.Path+"\n\nGröße: "+(result.Size/1073741824d).ToString("N2")+" GiB\n\nEnthaltene Programme (effektive Reihenfolge):\n"+string.Join("\n",result.Programs.Select((a,i)=>$"{i+1}. {a.Name} · {(a.Context=="System"?"specialize / SYSTEM; Fortsetzung nach Neustart":"erste Anmeldung / Benutzerkonto")}"));
- public ICommand IsoCommand{get;}public ICommand ToolCommand{get;}public ICommand OutputCommand{get;}public ICommand WorkCommand{get;}public ICommand AdkCommand{get;}public ICommand AddCommand{get;}public ICommand RemoveCommand{get;}public ICommand UpCommand{get;}public ICommand DownCommand{get;}public ICommand RelinkCommand{get;}public ICommand DependenciesCommand{get;}public ICommand SaveCommand{get;}public ICommand OpenCommand{get;}public ICommand ValidateCommand{get;}public ICommand BuildCommand{get;}public ICommand CancelCommand{get;}public ICommand FolderCommand{get;}public ICommand LogCommand{get;}
+ public ICommand IsoCommand{get;}public ICommand ToolCommand{get;}public ICommand OutputCommand{get;}public ICommand WorkCommand{get;}public ICommand AdkCommand{get;}public ICommand AddCommand{get;}public ICommand RemoveCommand{get;}public ICommand UpCommand{get;}public ICommand DownCommand{get;}public ICommand RelinkCommand{get;}public ICommand DependenciesCommand{get;}public ICommand SaveCommand{get;}public ICommand OpenCommand{get;}public ICommand ValidateCommand{get;}public ICommand BuildCommand{get;}public ICommand CancelCommand{get;}public ICommand FolderCommand{get;}public ICommand LogCommand{get;}public ICommand ReleasesCommand{get;}public ICommand HistoryCommand{get;}
  public MainViewModel()
  {
   ICommand Command(Action action,Func<bool>? can=null)=>new RelayCommand(()=>{action();return Task.CompletedTask;},can);
@@ -61,6 +64,8 @@ public sealed class MainViewModel : Observable
   OutputCommand=Command(()=>{var d=new SaveFileDialog{Filter="ISO-Datei|*.iso",FileName="Windows-NovaForge.iso",OverwritePrompt=true};if(d.ShowDialog()==true)OutputPath=d.FileName;},Edit);
   WorkCommand=Command(()=>{var d=new OpenFolderDialog{Title="Arbeitsverzeichnis auswählen"};if(d.ShowDialog()==true)WorkDirectory=d.FolderName;},Edit);
   AdkCommand=Command(()=>Launch("https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install"));
+  ReleasesCommand=Command(()=>Launch("https://github.com/tobiaspitka/NovaForge/releases"));
+  HistoryCommand=Command(()=>{var path=System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"NovaForge","Versions");System.IO.Directory.CreateDirectory(path);Launch(path);});
   AddCommand=Command(()=>{var d=new OpenFileDialog{Filter="Installer|*.msi;*.exe",Multiselect=true};if(d.ShowDialog()==true)AddFiles(d.FileNames);},Edit);
   RemoveCommand=Command(()=>{if(Selected is {} a){Programs.Remove(a);Selected=Programs.FirstOrDefault();Status="Programm entfernt. Abhängigkeiten werden beim Prüfen validiert.";}},Selection);
   UpCommand=Command(()=>Move(-1),Selection);DownCommand=Command(()=>Move(1),Selection);
@@ -90,7 +95,7 @@ public sealed class MainViewModel : Observable
   a.Arguments=a.Profile switch{"Inno Setup · Vorschlag"=>"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-","NSIS · Vorschlag"=>"/S","InstallShield · MSI-Wrapper Vorschlag"=>"/s /v\"/qn /norestart REBOOT=ReallySuppress\"",_=>""};a.Verified=false;
  }
  private void Move(int delta){if(Selected is {} a){var index=Programs.IndexOf(a);var next=index+delta;if(next>=0&&next<Programs.Count)Programs.Move(index,next);}}
- private Project GetProject()=>new(){IsoPath=IsoPath,IsoSha256=isoHash,OutputPath=OutputPath,OscdimgPath=OscdimgPath,WorkDirectory=WorkDirectory,Programs=Programs.ToList()};
+ private Project GetProject()=>new(){IsoPath=IsoPath,IsoSha256=isoHash,OutputPath=OutputPath,OscdimgPath=OscdimgPath,WorkDirectory=WorkDirectory,Programs=Programs.ToList(),Setup=Setup};
  private void EditDependencies()
  {
   if(Selected is not {} a)return;
@@ -116,7 +121,8 @@ public sealed class MainViewModel : Observable
    var p=await Project.Load(d.FileName);var issues=new List<string>();Status="Referenzierte Dateien prüfen …";
    if(!System.IO.File.Exists(p.IsoPath))issues.Add("ISO fehlt: "+p.IsoPath);else if(p.IsoSha256.Length>0&&await Validation.Hash(p.IsoPath)!=p.IsoSha256)issues.Add("ISO wurde verändert.");
    foreach(var a in p.Programs){if(!System.IO.File.Exists(a.Path))issues.Add(a.Name+": Datei fehlt.");else if(a.Sha256.Length>0&&await Validation.Hash(a.Path)!=a.Sha256)issues.Add(a.Name+": Datei wurde verändert.");}
-   IsoPath=p.IsoPath;isoHash=p.IsoSha256;OutputPath=p.OutputPath;WorkDirectory=p.WorkDirectory;OscdimgPath=p.OscdimgPath;Programs.Clear();foreach(var a in p.Programs)Programs.Add(a);Selected=Programs.FirstOrDefault();
+   IsoPath=p.IsoPath;isoHash=p.IsoSha256;OutputPath=p.OutputPath;WorkDirectory=p.WorkDirectory;OscdimgPath=p.OscdimgPath;Setup=p.Setup;Programs.Clear();foreach(var a in p.Programs)Programs.Add(a);Selected=Programs.FirstOrDefault();
+   if(Setup.CreateLocalUser)issues.Add("Kennwort des lokalen Kontos erneut eingeben; es wird nicht im Projekt gespeichert.");
    Status=issues.Count==0?"Projekt geladen; gespeicherte Prüfsummen geprüft.":"Projekt geladen: "+issues.Count+" Dateiprobleme. ISO auswählen / Installer neu zuordnen.";
    if(issues.Count>0)Dialog.Show("Dateizuordnung prüfen",string.Join("\n",issues)+"\n\nVerschobene oder absichtlich aktualisierte Dateien über die Auswahl neu zuordnen.");
   }finally{Busy=false;}
@@ -124,10 +130,10 @@ public sealed class MainViewModel : Observable
  private async Task Build()
  {
   if(!EditorValid())throw new InvalidOperationException("Bitte ungültige Eingaben korrigieren, insbesondere das Zeitlimit.");
-  Busy=true;Tab=2;Log="";result=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));cancellation=new();Indeterminate=true;
+  Busy=true;Tab=3;Log="";result=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));cancellation=new();Indeterminate=true;
   try {
    var p=GetProject();var reporter=new Progress<BuildProgress>(v=>{Activity=v.Activity;Indeterminate=v.Fraction==null;Fraction=v.Fraction??0;if(v.Fraction==null){Log+=(DateTime.Now.ToString("HH:mm:ss")+"  "+v.Activity+"\n");if(Log.Length>60000)Log=Log[^50000..];}});
-   result=await Task.Run(()=>new IsoBuilder().Build(p,reporter,cancellation.Token));isoHash=p.IsoSha256;Status="ISO erfolgreich erstellt und auf Lesbarkeit sowie Installer-Prüfsummen geprüft.";Activity="Abgeschlossen";Fraction=1;Tab=3;
+   result=await Task.Run(()=>new IsoBuilder().Build(p,reporter,cancellation.Token));isoHash=p.IsoSha256;Status="ISO erfolgreich erstellt und auf Lesbarkeit sowie Installer-Prüfsummen geprüft.";Activity="Abgeschlossen";Fraction=1;Tab=4;
   } catch(OperationCanceledException){Status="Erstellung abgebrochen. Details stehen im Ausgabeprotokoll.";Activity="Abgebrochen";}
   catch(Exception e){Status=e.Message;Activity="Erstellung fehlgeschlagen";Dialog.Show("Erstellung fehlgeschlagen",e.Message+"\n\nDas Protokoll liegt beim gewählten Ausgabepfad (.log).");}
   finally{Busy=false;Indeterminate=false;cancellation.Dispose();cancellation=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));}

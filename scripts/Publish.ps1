@@ -1,6 +1,7 @@
 ﻿param([string]$Dotnet='dotnet')
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
+& (Join-Path $PSScriptRoot 'Ensure-Version.ps1')
 if($Dotnet -eq 'dotnet' -and !(Get-Command dotnet -ErrorAction SilentlyContinue)) {$Dotnet=Join-Path $root '.tools\dotnet\dotnet.exe'}
 & (Join-Path $PSScriptRoot 'Build.ps1') -Dotnet $Dotnet
 & $Dotnet publish (Join-Path $root 'src\NovaForge\NovaForge.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o (Join-Path $root 'dist\win-x64')
@@ -15,4 +16,5 @@ foreach($framework in $config.runtimeOptions.includedFrameworks){
 }
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $licenses 'NovaForge-LICENSE.txt')
 & (Join-Path $root 'tests\Portable.Smoke.ps1')
+& (Join-Path $PSScriptRoot 'Store-Version.ps1')
 Get-FileHash (Join-Path $root 'dist\win-x64\NovaForge.exe') -Algorithm SHA256 | Format-List

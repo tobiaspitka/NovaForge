@@ -1,4 +1,4 @@
-# Testprotokoll · NovaForge 1.0
+# Testprotokoll · NovaForge 1.1.0
 
 Stand: **12. Oktober 2026**, Windows 11 Pro x64, Build **10.0.26300**. Verwendet: .NET SDK **10.0.401**, .NET/WPF-Runtime **10.0.12**, Windows PowerShell **5.1**. Keine ursprüngliche Projektbasis vorhanden; Anwendung neu erstellt.
 
@@ -7,10 +7,10 @@ Stand: **12. Oktober 2026**, Windows 11 Pro x64, Build **10.0.26300**. Verwendet
 | Prüfung | Ergebnis / Umfang |
 |---|---|
 | Release-Build | Erfolgreich, **0 Fehler, 0 Warnungen**. |
-| Kern-Testläufer | **18 Prüfungen bestanden**. Sortierung, System-/Benutzerphasen, Zyklen, deaktivierte/fehlende Abhängigkeiten, doppelte Dateien, ungeprüfte EXE-Konfiguration, fehlende EXE-Silent-Parameter, Zeitlimit, Exitcodes, Wiederaufnahmeregeln, Windows-Argumentquoting, specialize-Antwortdatei, eingebettete Skripte, SWM-Header/Vollständigkeit und Konflikte, JSON-Roundtrip, bekannte SHA-256-Testfolge. |
+| Kern-Testläufer | **28 Prüfungen bestanden**. Sortierung, System-/Benutzerphasen, Zyklen, deaktivierte/fehlende Abhängigkeiten, doppelte Dateien, ungeprüfte EXE-Konfiguration, fehlende EXE-Silent-Parameter, Zeitlimit, Exitcodes, Wiederaufnahmeregeln, Windows-Argumentquoting, specialize-Antwortdatei, eingebettete Skripte, SWM-Header/Vollständigkeit und Konflikte, JSON-Roundtrip, bekannte SHA-256-Testfolge. |
 | Windows-PowerShell-Prozessintegration | **15 Prüfungen bestanden**. Echte, selbst kompilierte harmlose Prozesse mit Exitcode 0, 3010 und 5; Pause bis Bootmarkeränderung; keine Wiederholung; Abhängigkeiten blockieren; Zeitlimit beendet echten Prozessbaum; veränderte Datei wird nicht ausgeführt; Running wird Interrupted; Benutzerzustand getrennt; Systemabhängigkeit wird während derselben Anmeldung abgewartet; Abschlussmarker; echte MSI-Argumentübergabe an eigenen msiexec-Ersatz. |
 | Leerzeichen / Umlaute | Integrationstests liefen in einem Arbeitsordner mit **„Ä mit Leerzeichen“**. Windows-Quoting mit Unicode, Leerzeichen, eingebetteten Anführungszeichen und abschließendem Backslash separat geprüft. |
-| WPF-Renderprüfung | Alle **vier echten Anwendungsseiten** geladen und layoutet; keine Dispatcher-Ausnahmen. Wechsel der Programmauswahl erhält benutzerdefinierte EXE-Parameter. Frühe Renderdurchläufe waren erfolgreich und wurden visuell geprüft; dunkler Hintergrund, lesbare Dropdowns und Zeilenumbruch wurden dabei korrigiert. Ein zwischenzeitlicher Durchlauf lieferte in dieser Desktop-Sitzung leere Bitmaps; der Test erkennt diesen Fall anhand einer unabhängigen roten Testfläche und meldet dann ausdrücklich SKIP. Beim abschließenden NovaForge-Build war der Bitmapexport wieder verfügbar: alle vier Seiten wurden erfolgreich mit Farbprüfung exportiert. Nachweis: `artifacts/ui/render-status.txt` und `page-0.png` bis `page-3.png`. |
+| WPF-Renderprüfung | Alle **fünf echten Anwendungsseiten** geladen und layoutet; keine Dispatcher-Ausnahmen. Wechsel der Programmauswahl erhält benutzerdefinierte EXE-Parameter. Frühe Renderdurchläufe waren erfolgreich und wurden visuell geprüft; dunkler Hintergrund, lesbare Dropdowns und Zeilenumbruch wurden dabei korrigiert. Ein zwischenzeitlicher Durchlauf lieferte in dieser Desktop-Sitzung leere Bitmaps; der Test erkennt diesen Fall anhand einer unabhängigen roten Testfläche und meldet dann ausdrücklich SKIP. Beim abschließenden NovaForge-Build war der Bitmapexport wieder verfügbar: alle fünf Seiten wurden erfolgreich mit Farbprüfung exportiert. Nachweis: `artifacts/ui/render-status.txt` und `page-0.png` bis `page-4.png`. |
 | PowerShell-Syntax | Skripte mit dem PowerShell-Parser geprüft; keine Syntaxfehler. Runner zusätzlich tatsächlich unter Windows PowerShell 5.1 ausgeführt. UTF-8-BOM für Skriptdateien und explizites UTF-8-Lesen für JSON. |
 | Portable Veröffentlichung | Tatsächliche **win-x64-Single-File-EXE**, selbstenthaltend, native WPF-Komponenten eingeschlossen, kein Trimming. Das Ausgabeverzeichnis benötigt keine DLLs neben der EXE. Lizenztexte liegen separat bei. |
 | EXE-Start | Endgültige EXE isoliert kopiert, echte WPF-Oberfläche geöffnet und normal mit Exitcode 0 geschlossen. `DOTNET_ROOT` und `DOTNET_ROOT_X64` zeigten dabei auf einen **nicht existierenden** Runtime-Ordner. Keine separat systemweit installierte .NET-10-Runtime vorausgesetzt. |
@@ -18,7 +18,7 @@ Stand: **12. Oktober 2026**, Windows 11 Pro x64, Build **10.0.26300**. Verwendet
 
 Die 15 Integrationstests installieren keine echten Produkte und registrieren keine Aufgaben auf dem Host. Sie isolieren Zustand und Testprozesse in einem temporären Verzeichnis. Die Neustartfortsetzung wird über eine veränderte gespeicherte Bootkennung getestet, nicht durch Neustart des Arbeitscomputers. Der MSI-Ersatz prüft echte Prozessargumente; dies ist ausdrücklich **kein Nachweis einer realen MSI-Installation**.
 
-Ausführbare Nachweise: `artifacts/final-build.txt`, `tests/runner-results.txt`, `artifacts/portable-start.txt`, `artifacts/ui/render-status.txt` und die vier Seiten-PNGs. Reproduzieren: `scripts/Build.ps1` beziehungsweise `scripts/Publish.ps1`.
+Ausführbare Nachweise: `artifacts/final-build.txt`, `tests/runner-results.txt`, `artifacts/portable-start.txt`, `artifacts/ui/render-status.txt` und die fünf Seiten-PNGs. Reproduzieren: `scripts/Build.ps1` beziehungsweise `scripts/Publish.ps1`.
 
 ## Nicht durchgeführt / verbleibende Abnahme
 
@@ -38,3 +38,7 @@ Nicht separat abgenommen: Windows-10-Host, abweichende DPI-Skalierungen/Monitore
 8. Vorhandene externe Antwortdatei/OEM-Skripte, unvollständiges SWM-Set, fehlenden Platz, Abbruch während Kopie/oscdimg und verweigerte UAC-Freigabe gezielt prüfen. Keine Quelle oder bestehende Ausgabe darf verändert werden; eigene Mounts und Arbeitsdateien müssen freigegeben werden.
 
 Erst nach diesen Prüfungen kann der vollständige Windows-Setup-Ablauf als praktisch abgenommen bezeichnet werden.
+
+## Version 1.1.0 – zusätzliche Prüfungen
+
+Setup-Defaults, unabhängige WinPE-Hardwareflags, BypassNRO-Reihenfolge, XML-Escaping und Kennwortkodierung, Kennwort-/Kontonamen- und Computernamevalidierung, regionale Einstellungen, Langpfade, Setup-only-Projekte, Kennwortausschluss aus JSON und Format-1-Migration sind automatisiert geprüft. Das fünfte Setup-Menü wurde unter Windows layoutet und exportiert. Die tatsächliche Wirkung auf OOBE, Konten und Hardwareprüfungen ist ohne neue Windows-Installation noch nicht abgenommen. Lokal gesicherte EXE-Versionen dürfen nicht mit einer solchen VM-Abnahme gleichgesetzt werden.

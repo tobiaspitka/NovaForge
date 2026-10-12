@@ -16,7 +16,8 @@ try {
   $count++;[IO.File]::WriteAllText($ProgressFile,"$count/$($files.Count)")
  }
  [xml]$answer=Get-Content -LiteralPath (Join-Path $root 'autounattend.xml') -Raw -Encoding UTF8
- if($answer.unattend.settings.pass -ne 'specialize'){throw 'Antwortdatei besitzt keine specialize-Phase.'}
+ $namespaces=New-Object Xml.XmlNamespaceManager($answer.NameTable);$namespaces.AddNamespace('u','urn:schemas-microsoft-com:unattend')
+ if(!$answer.SelectSingleNode('/u:unattend/u:settings[@pass="specialize"]',$namespaces)){throw 'Antwortdatei besitzt keine specialize-Phase.'}
  # El Torito boot record and boot catalog signature; booting each firmware still needs a VM.
  $stream=[IO.File]::OpenRead($Iso)
  try{
