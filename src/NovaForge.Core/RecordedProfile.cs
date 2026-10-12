@@ -48,6 +48,7 @@ public sealed class RecordedProfile
 }
 public sealed class RecorderSession
 {
+ public string ProgramName {get;set;}="";
  public string Mode {get;set;}="Record";
  public string InstallerFileName {get;set;}="";
  public string InstallerSha256 {get;set;}="";

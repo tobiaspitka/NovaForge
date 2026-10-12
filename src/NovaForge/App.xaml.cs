@@ -6,6 +6,8 @@ using NovaForge.Core;
 namespace NovaForge;
 public partial class App : Application
 {
+ [System.Runtime.InteropServices.DllImport("dwmapi.dll")]private static extern int DwmSetWindowAttribute(IntPtr handle,int attribute,ref int value,int size);
+ private void DarkWindowInitialized(object sender,RoutedEventArgs e){if(sender is Window window){int enabled=1;DwmSetWindowAttribute(new System.Windows.Interop.WindowInteropHelper(window).Handle,20,ref enabled,sizeof(int));}}
  protected override async void OnStartup(StartupEventArgs e)
  {
   base.OnStartup(e);DispatcherUnhandledException+=(_,a)=>{var path=System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"NovaForge","Beta");Directory.CreateDirectory(path);File.AppendAllText(System.IO.Path.Combine(path,"application-error.log"),DateTimeOffset.Now+"\n"+a.Exception+"\n");MessageBox.Show(a.Exception.GetBaseException().Message,"NovaForge Beta – Fehler");a.Handled=true;};

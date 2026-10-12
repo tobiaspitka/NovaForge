@@ -1,3 +1,16 @@
+# NovaForge 1.3 Beta · Geführte Softwarevorbereitung
+
+Jede aktive Software durchläuft einen verständlichen Ablauf: **Installation vormachen → Aufnahme abschließen → in einer neuen Sandbox testen → für ISO freigegeben**. Die ISO-Erstellung bleibt gesperrt, solange ein aktives Programm noch nicht vollständig geprüft ist. Vorhandene Projekte und Aufnahmen bleiben nutzbar; alte Silent-Konfigurationen müssen für diesen geführten Ablauf aufgenommen werden.
+
+Unter Programme einen Installer hinzufügen und den Programmnamen prüfen. Bei EXE-Dateien wird nach Möglichkeit der Produktname gelesen; der Anzeigename kann frei geändert werden. Der Kopfbereich und die dunkle Titelleiste zeigen das aktuelle Programm. Treiber-/Begleitordner und technische Optionen sind aufklappbar.
+
+Im Installationsstudio zeigt die zentrale Schaltfläche den nächsten erforderlichen Schritt. Windows Sandbox kann dort vorbereitet werden. Die erste Sitzung installiert und zeichnet auf. Aufnahme mit installiertem Prüfnachweis speichern und schließen. Nach Hostübernahme und geschlossener Sandbox folgt der Test in einer neuen Sitzung. NovaForge verhindert den Start einer zweiten Aufnahme-/Testsitzung, solange die vorherige Sandbox geöffnet ist.
+
+Nach erfolgreichem Test ist das Programm als „Für ISO geprüft“ markiert. „Nächstes Programm“ führt zur nächsten unvollständigen Software. Eine Änderung des Installerpfads, Hashes, Begleitordners oder Ablaufs hebt die Freigabe auf. Reine Anzeigenamen ändern die geprüfte Ausführung nicht. Gespeicherte Aufnahmen bleiben in der Bibliothek verfügbar.
+
+Auch das Sandbox-Fenster hat jetzt einen Programmkopf, verständliche Schritte, einen eigenen Aufnahmenamen, aufklappbare Hilfe und getrennte Aktionen für Entwurf und Abschluss. Die Aufnahme bleibt ein Entwurf, solange Schritte oder Prüfdatei fehlen. Ein erfolgreicher unveränderter Test ist für die ISO verpflichtend.
+
+Windows Sandbox und die vollständige VNC-/Treiber-/ISO-Installation wurden hier nicht ausgeführt. UI, Statusübergänge, Freigabesperre und vorhandene Automations-/Paketfunktionen werden geprüft. UAC bleibt manuell; hardwareabhängige Treiber können in Sandbox scheitern. Vertrauliche Werte bleiben im Profil und auf der ISO im Klartext.
 # NovaForge 1.2.0-beta.6 · Aufnahme- und Speicherfix
 
 - Aufnahme erfasst UIA-Ereignisse und beobachtet Klicks über vorab gelesene Selektoren. Keine UIA-/Dateiprüfung im zeitkritischen Eingabe-Hook. Aufnahmefehler werden angezeigt und protokolliert.

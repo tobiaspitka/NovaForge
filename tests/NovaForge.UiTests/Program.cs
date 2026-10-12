@@ -19,6 +19,8 @@ internal static class Program
   var b=new Installer{Name="Beispiel EXE",Path="C:\\Installationsdateien\\Programm.exe",Profile="Inno Setup · Vorschlag",Arguments="/custom-preserve",Verified=true};
   b.RecordedProfilePath="C:\\Aufnahmen\\123456789-recorded.json";b.RecordedProfileName="VNC mit Bildschirmtreiber";
   window.Model.Programs.Add(a);window.Model.Programs.Add(b);window.Model.Selected=b;
+  if(window.Model.BuildCommand.CanExecute(null))errors.Add("ISO creation enabled before software recording and fresh test.");
+  if(window.Model.CurrentProgramName!=b.Name||!window.Title.Contains(b.Name))errors.Add("Program name is not reflected in guided header and title bar.");
   int page=0;bool? bitmapAvailable=null;var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};
   timer.Tick+=(_,_)=>{
    window.UpdateLayout();

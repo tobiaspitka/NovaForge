@@ -16,28 +16,38 @@ public sealed class Installer : Observable
     private string name="", path="", arguments="", dependencies="", context="System", profile="Unbekannt / ungeprüft", codes="0,3010", hash="";
     private bool enabled=true, verified, webInstaller; private int timeout=1800;
     public string Name { get=>name; set=>Set(ref name,value); }
-    public string Path { get=>path; set { Set(ref path,value); Notify(nameof(Type)); } }
+    public string Path { get=>path; set { if(Set(ref path,value))ResetRecordingState();Notify(nameof(Type)); } }
     public string Type => System.IO.Path.GetExtension(Path).Equals(".msi",StringComparison.OrdinalIgnoreCase)?"MSI":"EXE";
     public string Arguments { get=>arguments; set=>Set(ref arguments,value); }
     public string Dependencies { get=>dependencies; set=>Set(ref dependencies,value); }
-    public string Context { get=>context; set{Set(ref context,value);Notify(nameof(ContextLabel));} }
+    public string Context { get=>context; set{Set(ref context,value);Notify(nameof(ContextLabel));NotifyWorkflow();} }
     public string ContextLabel=>Context=="System"?"Systemweit":"Benutzerbezogen";
     public string Profile { get=>profile; set=>Set(ref profile,value); }
     public string AllowedExitCodes { get=>codes; set=>Set(ref codes,value); }
     public int TimeoutSeconds { get=>timeout; set=>Set(ref timeout,value); }
-    public bool Enabled { get=>enabled; set=>Set(ref enabled,value); }
+    public bool Enabled { get=>enabled; set{Set(ref enabled,value);NotifyWorkflow();} }
     public bool Verified { get=>verified; set=>Set(ref verified,value); }
     public bool WebInstaller { get=>webInstaller; set=>Set(ref webInstaller,value); }
-    public string Sha256 { get=>hash; set=>Set(ref hash,value); }
+    public string Sha256 { get=>hash; set{if(Set(ref hash,value))ResetRecordingState();} }
     public string RebootPolicy { get; set; }="PauseUntilReboot";
     private string automationMode="Silent",recordedProfilePath="";
-    public string AutomationMode {get=>automationMode;set=>Set(ref automationMode,value);}
-    public string RecordedProfilePath {get=>recordedProfilePath;set{if(Set(ref recordedProfilePath,value)){RecordedProfileName="";Notify(nameof(RecordingLabel));}}}
+    public string AutomationMode {get=>automationMode;set{Set(ref automationMode,value);NotifyWorkflow();}}
+    public string RecordedProfilePath {get=>recordedProfilePath;set{if(Set(ref recordedProfilePath,value)){RecordedProfileName="";ResetRecordingState();Notify(nameof(RecordingLabel));}}}
     private string recordedProfileName="";
     [System.Text.Json.Serialization.JsonIgnore] public string RecordedProfileName {get=>recordedProfileName;set{if(Set(ref recordedProfileName,value))Notify(nameof(RecordingLabel));}}
     [System.Text.Json.Serialization.JsonIgnore] public string RecordingLabel=>RecordedProfilePath.Length==0?"Keine Aufnahme zugeordnet":RecordedProfileName.Length>0?RecordedProfileName:"Aufnahme ohne Anzeigenamen";
     public string RecordedProfileSha256 {get;set;}="";
-    public string CompanionDirectory {get;set;}="";
+    private string companions="";public string CompanionDirectory {get=>companions;set{if(Set(ref companions,value))ResetRecordingState();}}
+    private int recordedSteps;private bool recordingComplete,recordingTested;
+    [System.Text.Json.Serialization.JsonIgnore] public int RecordedSteps=>recordedSteps;
+    [System.Text.Json.Serialization.JsonIgnore] public bool RecordingComplete=>recordingComplete;
+    [System.Text.Json.Serialization.JsonIgnore] public bool RecordingTested=>recordingTested;
+    [System.Text.Json.Serialization.JsonIgnore] public bool ReadyForIso=>Context=="User"&&AutomationMode=="Recorded"&&RecordedProfilePath.Length>0&&recordingComplete&&recordingTested;
+    [System.Text.Json.Serialization.JsonIgnore] public int WorkflowStep=>ReadyForIso?4:RecordedSteps==0?1:!RecordingComplete?2:3;
+    [System.Text.Json.Serialization.JsonIgnore] public string WorkflowStatus=>!Enabled?"Nicht in der ISO":WorkflowStep switch{1=>"Installation aufnehmen",2=>"Aufnahme ergänzen",3=>"Frisch testen",_=>"Für ISO geprüft"};
+    public void ApplyRecordingState(RecordedProfile value){recordedSteps=value.Steps.Count;recordingComplete=false;try{value.Validate();recordingComplete=true;}catch(InvalidDataException){}recordingTested=recordingComplete&&value.InstallerSha256.Equals(Sha256,StringComparison.OrdinalIgnoreCase)&&value.Tested&&value.TestedPlanSha256==value.PlanHash();NotifyWorkflow();}
+    public void ResetRecordingState(){recordedSteps=0;recordingComplete=recordingTested=false;NotifyWorkflow();}
+    private void NotifyWorkflow(){foreach(var name in new[]{nameof(RecordedSteps),nameof(RecordingComplete),nameof(RecordingTested),nameof(ReadyForIso),nameof(WorkflowStep),nameof(WorkflowStatus)})Notify(name);}
     public IEnumerable<string> DependencyIds => Dependencies.Split(',',StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries);
     public override string ToString()=>Name;
 }
@@ -48,6 +58,7 @@ public sealed class Project
     [System.Text.Json.Serialization.JsonIgnore] public string ReplayHostPath {get;set;}="";
     public string IsoPath { get; set; }="";
     public string SourceKind {get;set;}="Iso";
+    public bool RequireRecordings {get;set;}
     public string IsoSha256 { get; set; }="";
     public string OutputPath { get; set; }="";
     public string WorkDirectory { get; set; }=System.IO.Path.GetTempPath();
@@ -64,7 +75,7 @@ public sealed class Project
         var directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
         string Resolve(string value)=>string.IsNullOrWhiteSpace(value)?value:System.IO.Path.GetFullPath(value,directory);
         p.IsoPath=Resolve(p.IsoPath);p.OutputPath=Resolve(p.OutputPath);p.OscdimgPath=Resolve(p.OscdimgPath);p.WorkDirectory=Resolve(p.WorkDirectory);
-        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);app.CompanionDirectory=Resolve(app.CompanionDirectory);if(File.Exists(app.RecordedProfilePath)){try{var profile=await RecordedProfile.Load(app.RecordedProfilePath);app.RecordedProfileName=profile.DisplayName.Trim();if(app.RecordedProfileName.Length==0&&File.Exists(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name")))app.RecordedProfileName=(await File.ReadAllTextAsync(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name"))).Trim();}catch(IOException){}catch(System.Text.Json.JsonException){}}}
+        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);app.CompanionDirectory=Resolve(app.CompanionDirectory);if(File.Exists(app.RecordedProfilePath)){try{var profile=await RecordedProfile.Load(app.RecordedProfilePath);app.RecordedProfileName=profile.DisplayName.Trim();app.ApplyRecordingState(profile);if(app.RecordedProfileName.Length==0&&File.Exists(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name")))app.RecordedProfileName=(await File.ReadAllTextAsync(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name"))).Trim();}catch(IOException){}catch(System.Text.Json.JsonException){}}}
         return p;
     }
     public async Task Save(string path) { var tmp=path+".tmp"; await File.WriteAllTextAsync(tmp,JsonSerializer.Serialize(this,JsonOptions)); File.Move(tmp,path,true); }
@@ -82,6 +93,7 @@ public static class Validation
         if(p.Programs.Select(x=>System.IO.Path.GetFullPath(x.Path)).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=p.Programs.Count) throw new InvalidDataException("Doppelte Installationsdateien.");
         foreach(var a in active)
         {
+            if(p.RequireRecordings&&a.AutomationMode!="Recorded")throw new InvalidDataException("Jedes aktive Programm muss zuerst in der Sandbox aufgenommen und frisch getestet werden: "+a.Name);
             if(string.IsNullOrWhiteSpace(a.Name)||string.IsNullOrWhiteSpace(a.Path)) throw new InvalidDataException("Name und Dateipfad sind Pflichtangaben.");
             if(files&&!File.Exists(a.Path)) throw new FileNotFoundException("Installer fehlt: "+a.Name,a.Path);
             if(files&&a.CompanionDirectory.Length>0&&(!Directory.Exists(a.CompanionDirectory)||!FolderMedia.Within(a.Path,a.CompanionDirectory)))throw new InvalidDataException("Begleitordner muss den ausgewählten Installer enthalten: "+a.Name);
