@@ -42,7 +42,7 @@ try{
  });
  var projectPath=System.IO.Path.Combine(temp,"test.json");await p.Save(projectPath);var loaded=await Project.Load(projectPath);Test("JSON roundtrip preserves IDs/arguments/dependencies",()=>Assert(loaded.Programs[1].Dependencies==a.Id&&loaded.Programs[0].Id==c.Id));
  p.Setup=new(){CreateLocalUser=true,LocalUserName="Testkonto",LocalUserPassword="DoNotPersist123",EnableOfflineButton=true};await p.Save(projectPath);loaded=await Project.Load(projectPath);var saved=await File.ReadAllTextAsync(projectPath);Test("Project persists options but never password",()=>Assert(!saved.Contains("DoNotPersist")&&!saved.Contains("LocalUserPassword")&&loaded.Setup.LocalUserPassword==""&&loaded.Setup.EnableOfflineButton));
- await File.WriteAllTextAsync(projectPath,"{\"Version\":1,\"Programs\":[]}");loaded=await Project.Load(projectPath);Test("Version 1 project migrates to version 2",()=>Assert(loaded.Version==2&&!loaded.Setup.HasCustomization));
+ await File.WriteAllTextAsync(projectPath,"{\"Version\":1,\"Programs\":[]}");loaded=await Project.Load(projectPath);Test("Version 1 project migrates to version 3",()=>Assert(loaded.Version==3&&!loaded.Setup.HasCustomization));
  var hashFile=System.IO.Path.Combine(temp,"hash");await File.WriteAllTextAsync(hashFile,"abc");var hash=await Validation.Hash(hashFile);Test("SHA256 known vector",()=>Assert(hash=="BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"));
 }finally{Directory.Delete(temp,true);}
 Console.WriteLine($"{passed} tests passed.");

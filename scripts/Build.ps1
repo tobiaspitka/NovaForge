@@ -12,4 +12,10 @@ if($LASTEXITCODE -ne 0){throw 'PowerShell-Integrationstests fehlgeschlagen.'}
 if($LASTEXITCODE -ne 0){throw 'Versionierungstests fehlgeschlagen.'}
 & $Dotnet run --project (Join-Path $root 'tests\NovaForge.UiTests\NovaForge.UiTests.csproj') -c Release -- (Join-Path $root 'artifacts\ui')
 if($LASTEXITCODE -ne 0){throw 'WPF-Tests fehlgeschlagen.'}
+$oldRuntime=$env:DOTNET_ROOT
+try {
+ $dotnetExecutable=if(Test-Path -LiteralPath $Dotnet){[IO.Path]::GetFullPath($Dotnet)}else{(Get-Command $Dotnet).Source};$env:DOTNET_ROOT=Split-Path $dotnetExecutable
+ & $Dotnet run --project (Join-Path $root 'tests\NovaForge.AutomationTests\NovaForge.AutomationTests.csproj') -c Release -- (Join-Path $root 'src\NovaForge\bin\Release\net10.0-windows\NovaForge.Beta.exe')
+ if($LASTEXITCODE -ne 0){throw 'Recorder-/Wiedergabetests fehlgeschlagen.'}
+}finally{$env:DOTNET_ROOT=$oldRuntime}
 & (Join-Path $PSScriptRoot 'Write-Validation.ps1')

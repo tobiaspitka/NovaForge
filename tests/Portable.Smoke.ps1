@@ -1,15 +1,15 @@
-﻿param([string]$Exe=(Join-Path (Split-Path $PSScriptRoot) 'dist\win-x64\NovaForge.exe'),[string]$Report=(Join-Path (Split-Path $PSScriptRoot) 'artifacts\portable-start.txt'))
+﻿param([string]$Exe=(Join-Path (Split-Path $PSScriptRoot) 'dist\win-x64\NovaForge.exe'),[string]$Report=(Join-Path (Split-Path $PSScriptRoot) 'artifacts\portable-start.txt'),[string]$ExpectedTitle='NovaForge · Windows nach deinem Plan')
 $ErrorActionPreference='Stop'
 $testDirectory=Join-Path ([IO.Path]::GetTempPath()) ('NovaForge-Portable-'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $testDirectory | Out-Null
 $oldRoot=$env:DOTNET_ROOT;$oldRootX64=$env:DOTNET_ROOT_X64;$process=$null
 try{
- Copy-Item -LiteralPath $Exe -Destination (Join-Path $testDirectory 'NovaForge.exe')
+ $fileName=[IO.Path]::GetFileName($Exe);Copy-Item -LiteralPath $Exe -Destination (Join-Path $testDirectory $fileName)
  $env:DOTNET_ROOT=Join-Path $testDirectory 'nonexistent-runtime';$env:DOTNET_ROOT_X64=$env:DOTNET_ROOT
- $process=Start-Process -FilePath (Join-Path $testDirectory 'NovaForge.exe') -WorkingDirectory $testDirectory -PassThru
+ $process=Start-Process -FilePath (Join-Path $testDirectory $fileName) -WorkingDirectory $testDirectory -PassThru
  $deadline=(Get-Date).AddSeconds(25)
- do{Start-Sleep -Milliseconds 500;$process.Refresh()}while(!$process.HasExited -and $process.MainWindowTitle -ne 'NovaForge · Windows nach deinem Plan' -and (Get-Date) -lt $deadline)
- if($process.HasExited -or $process.MainWindowTitle -ne 'NovaForge · Windows nach deinem Plan'){throw ('EXE-Start fehlgeschlagen: '+$process.MainWindowTitle)}
+ do{Start-Sleep -Milliseconds 500;$process.Refresh()}while(!$process.HasExited -and $process.MainWindowTitle -ne $ExpectedTitle -and (Get-Date) -lt $deadline)
+ if($process.HasExited -or $process.MainWindowTitle -ne $ExpectedTitle){throw ('EXE-Start fehlgeschlagen: '+$process.MainWindowTitle)}
  $process.CloseMainWindow() | Out-Null
  if(!$process.WaitForExit(5000) -or $process.ExitCode -ne 0){throw 'Anwendung wurde nicht normal beendet.'}
  $message='PASS: standalone WPF EXE opened and closed with exitcode 0; no adjacent DLLs; DOTNET_ROOT and DOTNET_ROOT_X64 invalid. SHA256='+ (Get-FileHash -LiteralPath $Exe -Algorithm SHA256).Hash

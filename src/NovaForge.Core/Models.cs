@@ -30,12 +30,18 @@ public sealed class Installer : Observable
     public bool WebInstaller { get=>webInstaller; set=>Set(ref webInstaller,value); }
     public string Sha256 { get=>hash; set=>Set(ref hash,value); }
     public string RebootPolicy { get; set; }="PauseUntilReboot";
+    private string automationMode="Silent",recordedProfilePath="";
+    public string AutomationMode {get=>automationMode;set=>Set(ref automationMode,value);}
+    public string RecordedProfilePath {get=>recordedProfilePath;set=>Set(ref recordedProfilePath,value);}
+    public string RecordedProfileSha256 {get;set;}="";
     public IEnumerable<string> DependencyIds => Dependencies.Split(',',StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries);
     public override string ToString()=>Name;
 }
 public sealed class Project
 {
-    public int Version { get; set; }=2;
+    public int Version { get; set; }=3;
+    [System.Text.Json.Serialization.JsonIgnore] public bool ReplayHostPortable {get;set;}
+    [System.Text.Json.Serialization.JsonIgnore] public string ReplayHostPath {get;set;}="";
     public string IsoPath { get; set; }="";
     public string IsoSha256 { get; set; }="";
     public string OutputPath { get; set; }="";
@@ -47,13 +53,13 @@ public sealed class Project
     public static async Task<Project> Load(string path)
     {
         var p=JsonSerializer.Deserialize<Project>(await File.ReadAllTextAsync(path),JsonOptions)??throw new InvalidDataException("Leere Projektdatei.");
-        if(p.Version is not (1 or 2)) throw new InvalidDataException("Nicht unterstützte Projektversion.");
-        p.Version=2;p.Setup??=new();
+        if(p.Version is not (1 or 2 or 3)) throw new InvalidDataException("Nicht unterstützte Projektversion.");
+        p.Version=3;p.Setup??=new();
         if(p.Programs==null)throw new InvalidDataException("Programmliste fehlt im Projekt.");
         var directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
         string Resolve(string value)=>string.IsNullOrWhiteSpace(value)?value:System.IO.Path.GetFullPath(value,directory);
         p.IsoPath=Resolve(p.IsoPath);p.OutputPath=Resolve(p.OutputPath);p.OscdimgPath=Resolve(p.OscdimgPath);p.WorkDirectory=Resolve(p.WorkDirectory);
-        foreach(var app in p.Programs)app.Path=Resolve(app.Path);
+        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);}
         return p;
     }
     public async Task Save(string path) { var tmp=path+".tmp"; await File.WriteAllTextAsync(tmp,JsonSerializer.Serialize(this,JsonOptions)); File.Move(tmp,path,true); }
@@ -77,8 +83,15 @@ public static class Validation
             if(a.TimeoutSeconds<10||a.TimeoutSeconds>86400) throw new InvalidDataException("Zeitlimit muss zwischen 10 und 86400 Sekunden liegen.");
             if(a.RebootPolicy is not ("PauseUntilReboot" or "Continue")) throw new InvalidDataException("Ungültige Neustartbehandlung.");
             if(a.Arguments.Contains('\r')||a.Arguments.Contains('\n')||a.Arguments.Contains('\0')) throw new InvalidDataException("Parameter dürfen keine Zeilenumbrüche oder NUL enthalten.");
-            if(!a.Verified) throw new InvalidDataException("Silent-Konfiguration bestätigen: "+a.Name);
-            if(a.Type=="EXE"&&string.IsNullOrWhiteSpace(a.Arguments))throw new InvalidDataException("Silent-Parameter für EXE fehlen: "+a.Name);
+            if(a.AutomationMode is not ("Silent" or "Recorded"))throw new InvalidDataException("Unbekannter Installationsmodus.");
+            if(a.AutomationMode=="Recorded"){
+                if(a.Context!="User")throw new InvalidDataException("Recorder-Profile laufen nur nach Anmeldung im interaktiven Benutzerkontext.");
+                if(files&&!File.Exists(a.RecordedProfilePath))throw new InvalidDataException("Recorder-Profil fehlt: "+a.Name);
+                if(files){var profile=RecordedProfile.Load(a.RecordedProfilePath).GetAwaiter().GetResult();profile.Validate(true);if(profile.InstallerSha256!=a.Sha256)throw new InvalidDataException("Recorder-Profil gehört zu einem anderen Installer.");}
+            }else{
+                if(!a.Verified) throw new InvalidDataException("Silent-Konfiguration bestätigen: "+a.Name);
+                if(a.Type=="EXE"&&string.IsNullOrWhiteSpace(a.Arguments))throw new InvalidDataException("Silent-Parameter für EXE fehlen: "+a.Name);
+            }
             ParseCodes(a.AllowedExitCodes);
             foreach(var id in a.DependencyIds)
             {

@@ -122,6 +122,11 @@ public sealed class IsoBuilder
             var sourceHash=await Validation.Hash(iso,ct);if(p.IsoSha256.Length>0&&!p.IsoSha256.Equals(sourceHash,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Quell-ISO wurde seit dem Speichern verändert. ISO neu zuordnen.");p.IsoSha256=sourceHash;
             await ElevatedHelper("MountCopy.ps1","ISO-Inhalt kopieren",new[]{"-Iso",iso,"-Destination",media},workspace,progress,Log,ct);CheckMedia(media);Log("Windows-Setup und Anpassungskonflikte geprüft.");
             var payload=System.IO.Path.Combine(media,"sources","$OEM$","$$","NovaForge");Directory.CreateDirectory(System.IO.Path.Combine(payload,"Installers"));
+            if(ordered.Any(x=>x.AutomationMode=="Recorded")){
+                if(!File.Exists(p.ReplayHostPath)||!p.ReplayHostPortable)throw new InvalidDataException("Recorder-ISOs aus der portablen NovaForge.Beta.exe erstellen.");
+                File.Copy(p.ReplayHostPath,System.IO.Path.Combine(payload,"NovaForge.Beta.exe"));Directory.CreateDirectory(System.IO.Path.Combine(payload,"Profiles"));
+                foreach(var app in ordered.Where(x=>x.AutomationMode=="Recorded")){var hash=await Validation.Hash(app.RecordedProfilePath,ct);if(app.RecordedProfileSha256.Length>0&&app.RecordedProfileSha256!=hash)throw new InvalidDataException("Recorder-Profil verändert: "+app.Name);app.RecordedProfileSha256=hash;File.Copy(app.RecordedProfilePath,System.IO.Path.Combine(payload,"Profiles",app.Id+".json"));}
+            }
             for(var i=0;i<ordered.Count;i++)
             {
                 var app=ordered[i];progress.Report(new("Installer integrieren: "+app.Name,(double)i/ordered.Count));
@@ -131,7 +136,7 @@ public sealed class IsoBuilder
                 if(await Validation.Hash(dest,ct)!=hash)throw new IOException("Kopierprüfung fehlgeschlagen: "+app.Name);
                 Log("Integriert (nicht ausgeführt): "+app.Name+" SHA256="+hash);
             }
-            var manifest=new{Version=1,BuildId=Guid.NewGuid().ToString("N"),SourceSha256=sourceHash,Programs=ordered.Select(x=>new{x.Id,x.Name,Path=System.IO.Path.GetFileName(x.Path),x.Type,x.Arguments,x.Context,x.TimeoutSeconds,x.Sha256,x.RebootPolicy,DependencyIds=x.DependencyIds.ToArray(),AllowedCodes=Validation.ParseCodes(x.AllowedExitCodes)})};
+            var manifest=new{Version=1,BuildId=Guid.NewGuid().ToString("N"),SourceSha256=sourceHash,Programs=ordered.Select(x=>new{x.Id,x.Name,Path=System.IO.Path.GetFileName(x.Path),x.Type,x.Arguments,x.Context,x.TimeoutSeconds,x.Sha256,x.RebootPolicy,x.AutomationMode,x.RecordedProfileSha256,DependencyIds=x.DependencyIds.ToArray(),AllowedCodes=Validation.ParseCodes(x.AllowedExitCodes)})};
             await File.WriteAllTextAsync(System.IO.Path.Combine(payload,"manifest.json"),JsonSerializer.Serialize(manifest,Project.JsonOptions),new UTF8Encoding(true),ct);
             foreach(var script in new[]{"Bootstrap.ps1","Runner.ps1"})await File.WriteAllTextAsync(System.IO.Path.Combine(payload,script),Resource(script),new UTF8Encoding(true),ct);
             await File.WriteAllTextAsync(System.IO.Path.Combine(media,"autounattend.xml"),AnswerFile(p.Setup),new UTF8Encoding(true),ct);

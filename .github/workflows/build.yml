@@ -1,7 +1,7 @@
 name: Build und Release
 on:
   push:
-    branches: [main]
+    branches: [main, 'beta/**']
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -40,5 +40,7 @@ jobs:
           if($env:GITHUB_REF_NAME -ne "v$version"){throw 'Tag und Projektversion stimmen nicht überein.'}
           gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY 2>$null
           if($LASTEXITCODE -eq 0){Write-Output 'Release existiert bereits. Bestehende Downloads bleiben unverändert.';exit 0}
-          gh release create $env:GITHUB_REF_NAME "release/NovaForge-$version.exe" "release/NovaForge-$version-win-x64.zip" "release/NovaForge-$version-Quellcode.zip" "release/SHA256SUMS-$version.txt" --verify-tag --title "NovaForge $version" --notes "Portable Windows-x64-Version. Änderungen und Prüfgrenzen stehen in CHANGELOG.md und TESTPROTOKOLL.md."
+          $releaseArgs=@('release','create',$env:GITHUB_REF_NAME,"release/NovaForge-$version.exe","release/NovaForge-$version-win-x64.zip","release/NovaForge-$version-Quellcode.zip","release/SHA256SUMS-$version.txt",'--verify-tag','--title',"NovaForge $version",'--notes','Portable Windows-x64-Version. Änderungen und Prüfgrenzen stehen in CHANGELOG.md und TESTPROTOKOLL.md.')
+          if($version.Contains('-')){$releaseArgs+=@('--prerelease','--latest=false')}
+          gh @releaseArgs
           if($LASTEXITCODE -ne 0){throw 'Release-Erstellung fehlgeschlagen.'}

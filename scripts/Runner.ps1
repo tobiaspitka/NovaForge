@@ -56,7 +56,14 @@ try {
    Log ('Start: '+$app.Name+' ('+$Context+')')
    $info=New-Object Diagnostics.ProcessStartInfo
    $info.UseShellExecute=$false; $info.WorkingDirectory=$base
-   if($app.Type -eq 'MSI') {
+   if($app.AutomationMode -eq 'Recorded') {
+    if($Context -ne 'User'){throw 'Recorder-Installation benötigt einen angemeldeten Benutzer.'}
+    $profile=Join-Path $root ('Profiles\'+$app.Id+'.json')
+    if((Get-FileHash -LiteralPath $profile -Algorithm SHA256).Hash -ne $app.RecordedProfileSha256){throw 'Recorder-Profil-Prüfsumme stimmt nicht.'}
+    $info.FileName=Join-Path $root 'NovaForge.Beta.exe'
+    $replayLog=Join-Path $base ($app.Id+'.recorder.log')
+    $info.Arguments='--replay --profile "'+$profile+'" --installer "'+$installer+'" --log "'+$replayLog+'"'
+   } elseif($app.Type -eq 'MSI') {
     $info.FileName=Join-Path $env:windir 'System32\msiexec.exe'
     $msiLog=Join-Path $base ($app.Id+'.msi.log')
     $info.Arguments='/i "'+$installer+'" '+$app.Arguments+' /qn /norestart REBOOT=ReallySuppress /L*v "'+$msiLog+'"'

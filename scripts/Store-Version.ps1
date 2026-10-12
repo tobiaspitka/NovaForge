@@ -1,7 +1,7 @@
 ﻿param([string]$StorageDirectory=(Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'NovaForge\Versions'))
 $ErrorActionPreference='Stop';$root=Split-Path $PSScriptRoot;. (Join-Path $PSScriptRoot 'VersionSources.ps1')
 [xml]$project=Get-Content -LiteralPath (Join-Path $root 'src\NovaForge\NovaForge.csproj') -Raw;$version=[string]$project.Project.PropertyGroup.Version
-$exe=Join-Path $root 'dist\win-x64\NovaForge.exe';$hash=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+$info=Get-NovaForgeBuildInfo $root;$exe=$info.ExePath;$hash=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
 $proof=Join-Path $root 'artifacts\portable-start.txt'
 if(!(Test-Path -LiteralPath $proof) -or (Get-Content -LiteralPath $proof -Raw) -notmatch [Regex]::Escape($hash)){throw 'Version wird nicht gesichert: erfolgreicher Startnachweis für diese EXE fehlt.'}
 $validationFile=Join-Path $root 'artifacts\validation.json'

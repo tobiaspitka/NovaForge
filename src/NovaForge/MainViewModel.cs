@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using NovaForge.Core;
 using Validation = NovaForge.Core.Validation;
+using NovaForge.Automation;
 
 namespace NovaForge;
 public sealed class RelayCommand(Func<Task> action,Func<bool>? can=null) : ICommand
@@ -31,7 +32,11 @@ public sealed class MainViewModel : Observable
  public ObservableCollection<Installer> Programs {get;}=[];
  private SetupOptions setup=new();
  public SetupOptions Setup {get=>setup;private set=>Set(ref setup,value);}
- public string VersionText=>"Version "+(typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)??"1.1.0");
+ public string VersionText=>"BETA · "+(typeof(MainViewModel).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute),false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion??"1.2.0-beta.1");
+ private string recorderStatus="Installer auswählen. Aufnahme und Wiederholung finden ausschließlich in Windows Sandbox statt.",lastSession="";private bool recorderElevation=true;
+ public string RecorderStatus {get=>recorderStatus;set=>Set(ref recorderStatus,value);}
+ public bool RecorderElevation {get=>recorderElevation;set=>Set(ref recorderElevation,value);}
+ public string SandboxStatus=>SandboxSessions.Available?"Windows-Sandbox-Startprogramm gefunden; aktiviertes Feature ist erforderlich.":"Windows Sandbox fehlt. In Windows-Features aktivieren; Aufnahme startet nicht auf dem Host.";
  public Func<bool> EditorValid {get;set;}=()=>true;
  public string[] Profiles {get;}=["Unbekannt / ungeprüft","MSI · Windows Installer","Inno Setup · Vorschlag","NSIS · Vorschlag","InstallShield · MSI-Wrapper Vorschlag"];
  public string IsoPath{get=>iso;set{if(Set(ref iso,value))isoHash="";Notify(nameof(IsoHint));}}
@@ -51,6 +56,7 @@ public sealed class MainViewModel : Observable
  public int Tab{get=>tab;set=>Set(ref tab,value);}
  public Installer? Selected{get=>selected;set{Set(ref selected,value);Notify(nameof(HasSelection));CommandManager.InvalidateRequerySuggested();}}
  public bool HasSelection=>Selected!=null;
+ public ICommand RecordCommand {get;}public ICommand TestRecordingCommand {get;}public ICommand ImportRecordingCommand {get;}public ICommand SessionFolderCommand {get;}
  public string ResultTitle=>result==null?"Noch keine ISO erstellt":"✓  ISO erfolgreich erstellt";
  public string ResultHash=>result?.Sha256??"";
  public string ResultText=>result==null?"Das Ergebnis erscheint nach einer vollständig abgeschlossenen Erstellung.":result.Path+"\n\nGröße: "+(result.Size/1073741824d).ToString("N2")+" GiB\n\nEnthaltene Programme (effektive Reihenfolge):\n"+string.Join("\n",result.Programs.Select((a,i)=>$"{i+1}. {a.Name} · {(a.Context=="System"?"specialize / SYSTEM; Fortsetzung nach Neustart":"erste Anmeldung / Benutzerkonto")}"));
@@ -66,6 +72,10 @@ public sealed class MainViewModel : Observable
   AdkCommand=Command(()=>Launch("https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install"));
   ReleasesCommand=Command(()=>Launch("https://github.com/tobiaspitka/NovaForge/releases"));
   HistoryCommand=Command(()=>{var path=System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"NovaForge","Versions");System.IO.Directory.CreateDirectory(path);Launch(path);});
+  RecordCommand=new RelayCommand(()=>StartRecorder("Record"),Selection);
+  TestRecordingCommand=new RelayCommand(()=>StartRecorder("Test"),()=>Selection()&&!string.IsNullOrEmpty(Selected!.RecordedProfilePath));
+  ImportRecordingCommand=new RelayCommand(ImportRecording,Selection);
+  SessionFolderCommand=Command(()=>Launch(lastSession),()=>!string.IsNullOrEmpty(lastSession));
   AddCommand=Command(()=>{var d=new OpenFileDialog{Filter="Installer|*.msi;*.exe",Multiselect=true};if(d.ShowDialog()==true)AddFiles(d.FileNames);},Edit);
   RemoveCommand=Command(()=>{if(Selected is {} a){Programs.Remove(a);Selected=Programs.FirstOrDefault();Status="Programm entfernt. Abhängigkeiten werden beim Prüfen validiert.";}},Selection);
   UpCommand=Command(()=>Move(-1),Selection);DownCommand=Command(()=>Move(1),Selection);
@@ -95,7 +105,9 @@ public sealed class MainViewModel : Observable
   a.Arguments=a.Profile switch{"Inno Setup · Vorschlag"=>"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-","NSIS · Vorschlag"=>"/S","InstallShield · MSI-Wrapper Vorschlag"=>"/s /v\"/qn /norestart REBOOT=ReallySuppress\"",_=>""};a.Verified=false;
  }
  private void Move(int delta){if(Selected is {} a){var index=Programs.IndexOf(a);var next=index+delta;if(next>=0&&next<Programs.Count)Programs.Move(index,next);}}
- private Project GetProject()=>new(){IsoPath=IsoPath,IsoSha256=isoHash,OutputPath=OutputPath,OscdimgPath=OscdimgPath,WorkDirectory=WorkDirectory,Programs=Programs.ToList(),Setup=Setup};
+ private Project GetProject()=>new(){IsoPath=IsoPath,IsoSha256=isoHash,OutputPath=OutputPath,OscdimgPath=OscdimgPath,WorkDirectory=WorkDirectory,Programs=Programs.ToList(),Setup=Setup,ReplayHostPortable=typeof(App).Assembly.Location.Length==0,ReplayHostPath=Environment.ProcessPath??""};
+ private async Task StartRecorder(string mode){if(Selected is not {} app)return;Busy=true;try{RecorderStatus="Isolierte Sitzung vorbereiten …";lastSession=await SandboxSessions.Prepare(app,mode,RecorderElevation);SandboxSessions.Launch(lastSession);RecorderStatus="Sandbox gestartet. Dort Installation vormachen beziehungsweise testen. Danach Output/profile.json importieren. Vor Wiederholung alte Sandbox schließen.";}finally{Busy=false;}}
+ private async Task ImportRecording(){if(Selected is not {} app)return;var dialog=new OpenFileDialog{Filter="Recorder-Profil|profile.json;*.json",InitialDirectory=string.IsNullOrEmpty(lastSession)?SandboxSessions.Root:System.IO.Path.Combine(lastSession,"Output")};if(dialog.ShowDialog()!=true)return;var profile=await RecordedProfile.Load(dialog.FileName);profile.Validate();var hash=await Validation.Hash(app.Path);if(profile.InstallerSha256!=hash)throw new InvalidDataException("Aufzeichnung gehört zu einem anderen Installer.");app.Sha256=hash;app.RecordedProfilePath=dialog.FileName;app.RecordedProfileSha256=await Validation.Hash(dialog.FileName);app.AutomationMode="Recorded";app.Context="User";app.Verified=false;RecorderStatus=profile.Tested&&profile.TestedPlanSha256==profile.PlanHash()?"Unverändertes, getestetes Profil übernommen. Wiedergabe nach erster Anmeldung; bei Bedarf UAC-Freigabe.":"Aufzeichnung übernommen. Noch nicht für ISO freigegeben: Wiederholung in frischer Sandbox testen und getestetes Profil importieren.";}
  private void EditDependencies()
  {
   if(Selected is not {} a)return;
@@ -130,10 +142,10 @@ public sealed class MainViewModel : Observable
  private async Task Build()
  {
   if(!EditorValid())throw new InvalidOperationException("Bitte ungültige Eingaben korrigieren, insbesondere das Zeitlimit.");
-  Busy=true;Tab=3;Log="";result=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));cancellation=new();Indeterminate=true;
+  Busy=true;Tab=4;Log="";result=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));cancellation=new();Indeterminate=true;
   try {
    var p=GetProject();var reporter=new Progress<BuildProgress>(v=>{Activity=v.Activity;Indeterminate=v.Fraction==null;Fraction=v.Fraction??0;if(v.Fraction==null){Log+=(DateTime.Now.ToString("HH:mm:ss")+"  "+v.Activity+"\n");if(Log.Length>60000)Log=Log[^50000..];}});
-   result=await Task.Run(()=>new IsoBuilder().Build(p,reporter,cancellation.Token));isoHash=p.IsoSha256;Status="ISO erfolgreich erstellt und auf Lesbarkeit sowie Installer-Prüfsummen geprüft.";Activity="Abgeschlossen";Fraction=1;Tab=4;
+   result=await Task.Run(()=>new IsoBuilder().Build(p,reporter,cancellation.Token));isoHash=p.IsoSha256;Status="ISO erfolgreich erstellt und auf Lesbarkeit sowie Installer-Prüfsummen geprüft.";Activity="Abgeschlossen";Fraction=1;Tab=5;
   } catch(OperationCanceledException){Status="Erstellung abgebrochen. Details stehen im Ausgabeprotokoll.";Activity="Abgebrochen";}
   catch(Exception e){Status=e.Message;Activity="Erstellung fehlgeschlagen";Dialog.Show("Erstellung fehlgeschlagen",e.Message+"\n\nDas Protokoll liegt beim gewählten Ausgabepfad (.log).");}
   finally{Busy=false;Indeterminate=false;cancellation.Dispose();cancellation=null;Notify(nameof(ResultTitle));Notify(nameof(ResultText));Notify(nameof(ResultHash));}

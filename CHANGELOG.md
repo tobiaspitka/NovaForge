@@ -1,3 +1,9 @@
+# Beta 1.2
+
+- Neue Seitennavigation und sichtbar gekennzeichnetes Beta-Design.
+- Installationsstudio mit Sandbox-Aufnahme und frischer Testwiedergabe.
+- Semantische UI-Automation-Profile mit Installer-Prüfsumme und Erfolgskriterium.
+- Wiedergabe auf dem Zielsystem; getrennte Beta-Ausgaben, Releases und lokale Versionsstände.
 # Änderungen
 
 ## 1.1.1
@@ -25,3 +31,4 @@ Die Windows-Setup-/VM-Abnahme steht aus. LabConfig und Offline-OOBE sind buildab
 - OEM-Payload, specialize-Installationssteuerung und wiederaufnehmbare Warteschlange.
 - Bootfähige ISO-Erstellung mittels Microsoft oscdimg; Dateihash- und Bootkatalogprüfung.
 - Portable, selbstenthaltende Windows-x64-EXE mit .NET 10 LTS.
+

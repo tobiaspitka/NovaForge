@@ -15,3 +15,6 @@ SYSTEM-Status befindet sich im nur administrativ beschreibbaren Payload-Ordner, 
 **Setup-Konfiguration**: SetupOptions trennt schaltbare Angaben von temporären Kennwörtern. UnattendBuilder erzeugt windowsPE-, specialize- und oobeSystem-Komponenten mit XML-Escaping. Projekte migrieren von Format 1 auf 2; Kennwörter sind von JSON ausgeschlossen.
 
 **Versionskette**: Ensure-Version erkennt Änderungen eines bereits gesicherten Standes. Build schreibt einen Quellhash-Nachweis nach bestandenen Tests. Publish prüft die selbstenthaltende EXE und Store-Version erstellt einen unveränderten lokalen Versionsstand. GitHub Releases bieten getrennte Downloads; lokale Dateien und Zugangsdaten bleiben außerhalb von Git.
+
+## Beta-Recorder
+SandboxSessions trennt schreibgeschützte Eingaben und beschreibbare Ausgaben. RecorderWindow erfasst UIA-Steuerelemente. RecordedProfile bindet den Ablauf an Installer-Hash und Prüfdatei. Erfolgreiche Testwiedergabe bestätigt den unveränderten Plan. IsoBuilder übernimmt den portablen Replay-Host und validierte Profile; Runner prüft Profil-Hashes. Beta-Builds liegen getrennt unter dist/beta.

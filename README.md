@@ -1,3 +1,20 @@
+# NovaForge Beta · Installationsstudio
+
+Neue Seitennavigation, sechs Arbeitsbereiche und sichtbare Beta-Kennzeichnung. Die stabile [Version 1.1.1](https://github.com/tobiaspitka/NovaForge/releases/tag/v1.1.1) bleibt verfügbar.
+
+## Aufnahme und Wiederholung
+
+1. Installer unter Programme auswählen, dann Installationsstudio öffnen.
+2. Aufnahme in Windows Sandbox starten und Installer bedienen. Zugängliche Schaltflächen, Optionen und Auswahlfelder werden über UI Automation erfasst. Textfelder ausdrücklich mit F8 übernehmen; Passwörter werden nicht aufgezeichnet.
+3. Eine neu installierte Datei als Erfolgskriterium auswählen und Profil speichern. Output/profile.json auf dem Host importieren.
+4. Erste Sandbox schließen und Wiederholung in einer frischen Sandbox testen. Das erfolgreich getestete Profil erneut importieren.
+5. Programm und Profil in die ISO übernehmen. Wiedergabe läuft am Ziel im Benutzerkontext; erforderliche UAC-Bestätigung bleibt interaktiv.
+
+Windows Sandbox muss verfügbar sein (unterstützte Windows-Edition und Virtualisierung). Eingabeordner sind schreibgeschützt, ein eigener Ausgabeordner ist beschreibbar. Netzwerk ist standardmäßig deaktiviert; die Webinstaller-Option aktiviert es. Zwischenablage ist deaktiviert. Recorder und ISO-Integration benötigen die veröffentlichte portable Beta-EXE.
+
+Profile sind an die Installer-Prüfsumme gebunden. Änderungen entwerten den Test. Fehlende oder mehrdeutige Steuerelemente stoppen die Wiedergabe. Installer mit selbst gezeichneten Oberflächen oder wechselnden Dialogen können scheitern. Bestehende Silent-Installation bleibt verfügbar.
+
+Windows Sandbox ist auf dem Entwicklungsgerät nicht vorhanden. Echte Drittanbieter-Installer in Sandbox und vollständige ISO-/Windows-Setup-Läufe wurden nicht geprüft. Die UI-Automation wurde mit einer eigenen harmlosen Testanwendung geprüft.
 # NovaForge
 
 Eine lokale Windows-Desktop-Anwendung zum Erstellen eigener Windows-10/11-x64-Installationsmedien mit Programmen und wählbaren Setup-Einstellungen.
@@ -8,7 +25,7 @@ Eine lokale Windows-Desktop-Anwendung zum Erstellen eigener Windows-10/11-x64-In
 
 Bei GitHub Releases die gewünschte NovaForge-<Version>.exe herunterladen und starten. Das Portable-ZIP enthält zusätzlich Dokumentation und Lizenztexte. Frühere Versionen stehen getrennt zur Verfügung. Die EXE enthält .NET 10 LTS und native WPF-Komponenten; keine separate .NET-Installation erforderlich. Native Bibliotheken werden unter %TEMP%\.net extrahiert. Die EXE ist nicht digital signiert.
 
-NovaForge arbeitet lokal ohne Benutzerkonto, Webserver oder kostenpflichtigen Dienst. Die ursprüngliche ISO bleibt erhalten. Hinzugefügte Installer werden auf dem Erstellungscomputer weder installiert noch ausgeführt.
+NovaForge arbeitet lokal ohne Benutzerkonto, Webserver oder kostenpflichtigen Dienst. Die ursprüngliche ISO bleibt erhalten. Hinzugefügte Installer werden auf dem Erstellungscomputer weder installiert noch ausgeführt; Aufnahmen erfolgen in Windows Sandbox.
 
 Für ISO-Erstellung werden Windows 10/11 x64, eine originale Windows-x64-ISO, integriertes DISM/Windows PowerShell 5.1 und Microsoft oscdimg aus den **Windows ADK Deployment Tools** benötigt. [Offizielle ADK-Anleitung und Download](https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install). NovaForge erkennt den Standardpfad und erlaubt manuelle Auswahl. oscdimg wird nicht mitgeliefert; das separate WinPE-Add-on ist hier nicht nötig.
 
@@ -92,3 +109,4 @@ Build-Protokoll: <Ausgabe>.iso.log. Systemstatus/-logs: %WINDIR%\NovaForge\State
 Bei Hashfehlern nur beabsichtigt aktualisierte Dateien neu zuordnen. Bei 3010 nach Setup neu starten. Fehler/Interrupted zunächst anhand installierter Produkte und Protokolle prüfen. Für gezielte Wiederholung Aufgaben deaktivieren, nur betreffende Fehler- und abhängige Blocked-Einträge aus state.json entfernen, Aufgaben reaktivieren. Erfolgreiche Einträge erhalten und niemals eine laufende Warteschlange bearbeiten.
 
 **Prüfstand:** Build, Kernlogik, echte harmlose Prozesse, UI-Layout und EXE-Start wurden unter Windows geprüft. Ohne bereitgestellte Original-ISO, oscdimg und Test-VM sind vollständige ADK-ISO-Erstellung, Boot, Windows-Neuinstallation und Hardware-/OOBE-/Konteneffekte noch nicht praktisch abgenommen. Experimentelle Schalter werden nicht als universell garantiert bezeichnet. [Details und VM-Testplan](TESTPROTOKOLL.md).
+

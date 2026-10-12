@@ -12,3 +12,9 @@ function Get-NovaForgeSourceDigest([string]$Root) {
  $hasher=[Security.Cryptography.SHA256]::Create()
  try{return [BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes(($lines -join "`n")))).Replace('-','')}finally{$hasher.Dispose()}
 }
+function Get-NovaForgeBuildInfo([string]$Root){
+ [xml]$project=Get-Content -LiteralPath (Join-Path $Root 'src\NovaForge\NovaForge.csproj') -Raw
+ $version=[string]$project.Project.PropertyGroup.Version;$name=[string]$project.Project.PropertyGroup.AssemblyName;if(!$name){$name='NovaForge'}
+ $beta=$version.Contains('-');$directory=Join-Path $Root $(if($beta){'dist\beta\win-x64'}else{'dist\win-x64'})
+ return [PSCustomObject]@{Version=$version;AssemblyName=$name;Beta=$beta;OutputDirectory=$directory;ExePath=(Join-Path $directory ($name+'.exe'));Title=$(if($beta){'NovaForge Beta · Installationsstudio'}else{'NovaForge · Windows nach deinem Plan'})}
+}
