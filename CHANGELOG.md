@@ -52,3 +52,6 @@ Die Windows-Setup-/VM-Abnahme steht aus. LabConfig und Offline-OOBE sind buildab
 - OEM-Payload, specialize-Installationssteuerung und wiederaufnehmbare Warteschlange.
 - Bootfähige ISO-Erstellung mittels Microsoft oscdimg; Dateihash- und Bootkatalogprüfung.
 - Portable, selbstenthaltende Windows-x64-EXE mit .NET 10 LTS.
+
+## Nächste Beta · Anzeigename der zugeordneten Aufnahme
+Unter Programme erscheint der vergebene Aufnahmename. Der technische Dateipfad ist separat aufklappbar. Namen werden beim Zuordnen, Umbenennen und erneuten Projektöffnen geladen.

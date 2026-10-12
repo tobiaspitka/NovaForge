@@ -32,7 +32,10 @@ public sealed class Installer : Observable
     public string RebootPolicy { get; set; }="PauseUntilReboot";
     private string automationMode="Silent",recordedProfilePath="";
     public string AutomationMode {get=>automationMode;set=>Set(ref automationMode,value);}
-    public string RecordedProfilePath {get=>recordedProfilePath;set=>Set(ref recordedProfilePath,value);}
+    public string RecordedProfilePath {get=>recordedProfilePath;set{if(Set(ref recordedProfilePath,value)){RecordedProfileName="";Notify(nameof(RecordingLabel));}}}
+    private string recordedProfileName="";
+    [System.Text.Json.Serialization.JsonIgnore] public string RecordedProfileName {get=>recordedProfileName;set{if(Set(ref recordedProfileName,value))Notify(nameof(RecordingLabel));}}
+    [System.Text.Json.Serialization.JsonIgnore] public string RecordingLabel=>RecordedProfilePath.Length==0?"Keine Aufnahme zugeordnet":RecordedProfileName.Length>0?RecordedProfileName:"Aufnahme ohne Anzeigenamen";
     public string RecordedProfileSha256 {get;set;}="";
     public string CompanionDirectory {get;set;}="";
     public IEnumerable<string> DependencyIds => Dependencies.Split(',',StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries);
@@ -61,7 +64,7 @@ public sealed class Project
         var directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
         string Resolve(string value)=>string.IsNullOrWhiteSpace(value)?value:System.IO.Path.GetFullPath(value,directory);
         p.IsoPath=Resolve(p.IsoPath);p.OutputPath=Resolve(p.OutputPath);p.OscdimgPath=Resolve(p.OscdimgPath);p.WorkDirectory=Resolve(p.WorkDirectory);
-        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);app.CompanionDirectory=Resolve(app.CompanionDirectory);}
+        foreach(var app in p.Programs){app.Path=Resolve(app.Path);app.RecordedProfilePath=Resolve(app.RecordedProfilePath);app.CompanionDirectory=Resolve(app.CompanionDirectory);if(File.Exists(app.RecordedProfilePath)){try{var profile=await RecordedProfile.Load(app.RecordedProfilePath);app.RecordedProfileName=profile.DisplayName.Trim();if(app.RecordedProfileName.Length==0&&File.Exists(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name")))app.RecordedProfileName=(await File.ReadAllTextAsync(System.IO.Path.ChangeExtension(app.RecordedProfilePath,"name"))).Trim();}catch(IOException){}catch(System.Text.Json.JsonException){}}}
         return p;
     }
     public async Task Save(string path) { var tmp=path+".tmp"; await File.WriteAllTextAsync(tmp,JsonSerializer.Serialize(this,JsonOptions)); File.Move(tmp,path,true); }

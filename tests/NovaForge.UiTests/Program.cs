@@ -17,6 +17,7 @@ internal static class Program
   var recorderSetup=NovaForge.Automation.MouseRecorder.Create(_=>false,_=>{});
   var a=new Installer{Name="Beispiel MSI",Path="C:\\Installationsdateien\\Beispiel.msi",Profile="MSI · Windows Installer",Verified=true};
   var b=new Installer{Name="Beispiel EXE",Path="C:\\Installationsdateien\\Programm.exe",Profile="Inno Setup · Vorschlag",Arguments="/custom-preserve",Verified=true};
+  b.RecordedProfilePath="C:\\Aufnahmen\\123456789-recorded.json";b.RecordedProfileName="VNC mit Bildschirmtreiber";
   window.Model.Programs.Add(a);window.Model.Programs.Add(b);window.Model.Selected=b;
   int page=0;bool? bitmapAvailable=null;var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};
   timer.Tick+=(_,_)=>{
@@ -38,6 +39,7 @@ internal static class Program
     var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var s=File.Create(png))encoder.Save(s);
    }else if(File.Exists(png))File.Delete(png);
    if(page==1 && b.Arguments!="/custom-preserve")errors.Add("Profile binding changed custom parameters while switching selection.");
+   if(page==1){System.Windows.Controls.TextBox? FindName(DependencyObject node){if(node is System.Windows.Controls.TextBox box&&System.Windows.Automation.AutomationProperties.GetAutomationId(box)=="AssignedRecordingName")return box;for(int i=0;i<VisualTreeHelper.GetChildrenCount(node);i++){var found=FindName(VisualTreeHelper.GetChild(node,i));if(found!=null)return found;}return null;}if(FindName(window)?.Text!="VNC mit Bildschirmtreiber")errors.Add("Assigned recording shows internal filename instead of user-defined name.");}
    page++;if(page==6){timer.Stop();window.Close();frame.Continue=false;}else{window.Model.Tab=page;if(page==1){window.Model.Selected=a;window.Model.Selected=b;}}
   };
   timer.Start();Dispatcher.PushFrame(frame);
