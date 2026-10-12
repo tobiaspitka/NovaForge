@@ -13,6 +13,7 @@ public sealed class UiStep : Observable
  public int TimeoutSeconds {get;set;}=45;
  public string ProcessName {get;set;}="";
  public string ProcessImageSha256 {get;set;}="";
+ public void Rebind(UiStep target){WindowTitle=target.WindowTitle;AutomationId=target.AutomationId;Name=target.Name;ClassName=target.ClassName;ControlTypeId=target.ControlTypeId;ProcessName=target.ProcessName;ProcessImageSha256=target.ProcessImageSha256;}
  [JsonIgnore] public string ActionLabel=>Action switch{"Invoke"=>"Schaltfläche betätigen","Select"=>"Eintrag auswählen","Toggle"=>Value=="On"?"Häkchen setzen":"Häkchen entfernen","SetValue"=>"Text eingeben","SetSecretValue"=>"Vertraulichen Wert eingeben",_=>Action};
  public override string ToString()=>$"{ActionLabel} · {(Action=="SetSecretValue"?"Vertrauliches Feld":Name)} · {WindowTitle}";
 }

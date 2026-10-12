@@ -1,3 +1,13 @@
+# NovaForge 1.3.0-beta.6 · Robustere Erkennung und neu zuordnen
+
+Die Zielsuche bewertet erreichbare Elemente ausschließlich in zugeordneten Installerprozessen. Stabile Kennung plus normalisierte Beschriftung erkennen ein Ziel auch bei geändertem Fenstertitel oder Klassenname. Bei geändertem Element-ID kann eine eindeutige Beschriftung mit passendem Fenstertitel und Klasse helfen. Beschleunigertasten (&), Auslassungspunkte, Groß-/Kleinschreibung, Leerzeichen und Versionssuffixe im Titel werden berücksichtigt. Nicht eindeutig wiederauffindbare Elemente werden auch aus den Korrekturvorschlägen ausgeschlossen. Andere Beschriftungen bei wiederverwendeter Kennung, falsche Prozesszuordnung, fehlende Aktionsmuster, verdeckte/deaktivierte oder mehrdeutige Elemente führen zu keiner automatischen Aktivierung.
+
+Bei fehlendem oder mehrdeutigem Ziel bietet der Sandbox-Test „Installationsschritt neu zuordnen“. Der Nutzer wählt ein sichtbares kompatibles Element, kann noch einmal suchen oder den Test beenden. Die Aktion und Eingabewerte bleiben erhalten; nur die Zielkennung wird geändert. Gewöhnliche Texteingaben können dabei nicht auf Kennwortfelder umgebogen werden. Die neue Zuordnung wird als ungeprüfter Entwurf gesichert. Erst ein weiterer unveränderter Durchlauf in einer neuen Sandbox gibt sie für die ISO frei. ISO-Wiedergabe fragt nicht interaktiv nach einer Zuordnung.
+
+Die Diagnose nennt zugängliche zugeordnete Fenster und mögliche Gründe wie noch nicht geöffnetes, verdecktes oder geändertes Ziel. Bestehende Aufnahmen bleiben kompatibel. Kein blindes Klicken gespeicherter Bildschirmkoordinaten und keine Garantie für alle benutzerdefinierten Installer oder geschützte UAC-Abfragen.
+
+Neue echte Prozessprüfungen decken Titel-/Klassenänderung, geänderte IDs mit Versionssuffixen, widersprechende Beschriftungen, Mehrdeutigkeit, Prozessgrenzen und die Korrektur eines fehlenden Felds mit automatischer Fortsetzung ab. Reparatur erhält den Eingabewert, entwertet die alte Freigabe und verlangt erneut einen frischen Test. Sandbox-Dialog wird kompiliert; vollständige VNC-/Gast-/ISO-Installation hier weiterhin nicht end-to-end ausgeführt.
+
 # NovaForge 1.3.0-beta.4 · Automatische Wiedergabe und verständliche Schritte
 
 Die gesamte UI-Automation der Wiedergabe läuft außerhalb des WPF-Fensterablaufs auf MTA-Hintergrundthreads. Schaltflächen werden über einen eigenen Helfer ausgelöst, der das Ziel selbst erneut auflöst; ein laufender Invoke-Aufruf sperrt nicht die Suche nach dem nächsten Dialog. Vor erfolgreicher Freigabe müssen die Auslösungen abgeschlossen, der Installer erfolgreich beendet und die neue Prüfdatei vorhanden sein. Es werden keine gespeicherten Bildschirmkoordinaten blind geklickt.
